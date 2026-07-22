@@ -8,21 +8,20 @@ export type ContractIssue = {
 };
 
 const claimsShortEntries = (text: string): boolean => {
-  const forbiddenClaims = [
-    /produces? short (signals?|entries?)/,
-    /creates? short (signals?|entries?)/,
-    /generates? short (signals?|entries?)/,
-    /opens? short (positions?|entries?)/,
-    /short entries? (are|is) (generated|created|opened)/
-  ];
-  return forbiddenClaims.some((pattern) => pattern.test(text));
+  const sentences = text.split(/[.!?]+/).map((sentence) => sentence.trim()).filter(Boolean);
+  const positiveClaim = /\b(?:produce|produces|create|creates|generate|generates|open|opens)\s+short\s+(?:signals?|entries?|positions?)\b|\bshort\s+entries?\s+(?:are|is)\s+(?:generated|created|opened)\b/;
+  const negation = /\b(?:never|not|no|does not|doesn't|will not|won't|cannot|can't)\b/;
+
+  return sentences.some((sentence) => positiveClaim.test(sentence) && !negation.test(sentence));
 };
 
 const mentionsBreakoutVerificationLevels = (text: string): boolean => {
-  const hasHigh = /(?:previous )?breakout high|previous high/.test(text);
-  const hasLow = /(?:previous )?breakout low|previous low|breakout high and low/.test(text);
-  const hasVisualContext = /plot|plotted|visible|visual|chart/.test(text);
-  return hasHigh && hasLow && hasVisualContext;
+  const mentionsHighAndLow =
+    /\bbreakout high and low\b/.test(text) ||
+    (/\b(?:previous )?breakout high\b/.test(text) && /\b(?:previous )?breakout low\b/.test(text)) ||
+    (/\bprevious high\b/.test(text) && /\bprevious low\b/.test(text));
+  const hasVisualContext = /\b(?:plot|plots|plotted|visible|visual|chart|display|displayed)\b/.test(text);
+  return mentionsHighAndLow && hasVisualContext;
 };
 
 export function analyzeBehaviorContract(config: StrategyConfig, code: string, explanation: string[]): ContractIssue[] {
