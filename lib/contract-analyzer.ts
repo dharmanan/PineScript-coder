@@ -7,6 +7,24 @@ export type ContractIssue = {
   message: string;
 };
 
+const claimsShortEntries = (text: string): boolean => {
+  const forbiddenClaims = [
+    /produces? short (signals?|entries?)/,
+    /creates? short (signals?|entries?)/,
+    /generates? short (signals?|entries?)/,
+    /opens? short (positions?|entries?)/,
+    /short entries? (are|is) (generated|created|opened)/
+  ];
+  return forbiddenClaims.some((pattern) => pattern.test(text));
+};
+
+const mentionsBreakoutVerificationLevels = (text: string): boolean => {
+  const hasHigh = /(?:previous )?breakout high|previous high/.test(text);
+  const hasLow = /(?:previous )?breakout low|previous low|breakout high and low/.test(text);
+  const hasVisualContext = /plot|plotted|visible|visual|chart/.test(text);
+  return hasHigh && hasLow && hasVisualContext;
+};
+
 export function analyzeBehaviorContract(config: StrategyConfig, code: string, explanation: string[]): ContractIssue[] {
   const plan = buildBehaviorPlan(config);
   const text = explanation.join(" ").toLowerCase();
@@ -26,11 +44,11 @@ export function analyzeBehaviorContract(config: StrategyConfig, code: string, ex
 
   if (plan.mode === "spot_buy_exit") {
     if (!text.includes("spot exit")) error("explanation.spot_exit_missing", "Spot explanation must describe its exit logic.");
-    if (/short entr/.test(text)) error("explanation.spot_short_claim", "Spot explanation must not claim short entries.");
+    if (claimsShortEntries(text)) error("explanation.spot_short_claim", "Spot explanation must not claim short entries.");
   }
 
   if (plan.entry.trigger.plotsBreakoutLevels) {
-    if (!text.includes("breakout high") || !text.includes("breakout low")) error("explanation.breakout_plots_missing", "Breakout explanation must mention plotted verification levels.");
+    if (!mentionsBreakoutVerificationLevels(text)) error("explanation.breakout_plots_missing", "Breakout explanation must mention plotted verification levels.");
     if (!code.includes('plot(previousHigh, "Breakout High"') || !code.includes('plot(previousLow, "Breakout Low"')) {
       error("code.breakout_plots_missing", "Breakout contract requires visible high and low plots.");
     }
