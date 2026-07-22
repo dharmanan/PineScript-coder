@@ -84,4 +84,26 @@ describe("visual plan isolation", () => {
     expect(advancedCode).not.toContain("visualProfile = input.string(");
     expect(cleanCode).not.toBe(advancedCode);
   });
+
+  it("uses a higher-contrast Advanced palette while Clean remains disabled", () => {
+    const clean = clone(defaultConfig);
+    clean.visual.profile = "clean";
+    clean.visual.colorBars = false;
+    clean.visual.showTrendRibbon = false;
+
+    const advanced: StrategyConfig = clone(clean);
+    advanced.visual.profile = "advanced";
+    advanced.visual.colorBars = true;
+    advanced.visual.showTrendRibbon = true;
+
+    const cleanCode = compilePine(clean);
+    const advancedCode = compilePine(advanced);
+
+    expect(advancedCode).toContain("color.new(color.rgb(0, 165, 90), 15)");
+    expect(advancedCode).toContain("color.new(color.rgb(220, 50, 60), 15)");
+    expect(advancedCode).toContain("color.new(color.lime, 95)");
+    expect(advancedCode).toContain("color.new(color.red, 95)");
+    expect(cleanCode).toContain("colorSignalBars = input.bool(false");
+    expect(cleanCode).toContain("showTrendRibbon = input.bool(false");
+  });
 });
