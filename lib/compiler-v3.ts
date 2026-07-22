@@ -56,17 +56,24 @@ export function compilePine(config: StrategyConfig): string {
   const labelSize = visual.labelSize === "tiny" ? "size.tiny" : visual.labelSize === "small" ? "size.small" : "size.normal";
   code = code.replace(/size=size\.tiny\)/g, `size=${labelSize})`);
 
+  const advancedLongBar = "color.new(color.rgb(0, 165, 90), 15)";
+  const enhancedLongBar = "color.new(color.lime, 60)";
+  const advancedShortBar = "color.new(color.rgb(220, 50, 60), 15)";
+  const enhancedShortBar = "color.new(color.red, 60)";
+  const longBarColor = `visualProfile == "Advanced" ? ${advancedLongBar} : ${enhancedLongBar}`;
+  const shortBarColor = `visualProfile == "Advanced" ? ${advancedShortBar} : ${enhancedShortBar}`;
+
   const setupColorExpression = isSpot
-    ? "buySetup ? color.new(color.lime, visualProfile == \"Advanced\" ? 45 : 70) : na"
+    ? `buySetup ? (${longBarColor}) : na`
     : allowShort
-      ? "longSetup ? color.new(color.lime, visualProfile == \"Advanced\" ? 45 : 70) : shortSetup ? color.new(color.red, visualProfile == \"Advanced\" ? 45 : 70) : na"
-      : "longSetup ? color.new(color.lime, visualProfile == \"Advanced\" ? 45 : 70) : na";
+      ? `longSetup ? (${longBarColor}) : shortSetup ? (${shortBarColor}) : na`
+      : `longSetup ? (${longBarColor}) : na`;
 
   const ribbonExpression = config.higherTimeframe.enabled
-    ? "showTrendRibbon and visualProfile != \"Clean\" ? (htfBull ? color.new(color.lime, 88) : color.new(color.red, 88)) : na"
+    ? "showTrendRibbon and visualProfile != \"Clean\" ? (htfBull ? color.new(color.lime, 95) : color.new(color.red, 95)) : na"
     : isSpot
-      ? "showTrendRibbon and visualProfile != \"Clean\" ? (buySetup ? color.new(color.lime, 88) : na) : na"
-      : "showTrendRibbon and visualProfile != \"Clean\" ? (longSetup ? color.new(color.lime, 88) : " + (allowShort ? "shortSetup ? color.new(color.red, 88) : na" : "na") + ") : na";
+      ? "showTrendRibbon and visualProfile != \"Clean\" ? (buySetup ? color.new(color.lime, 95) : na) : na"
+      : "showTrendRibbon and visualProfile != \"Clean\" ? (longSetup ? color.new(color.lime, 95) : " + (allowShort ? "shortSetup ? color.new(color.red, 95) : na" : "na") + ") : na";
 
   code = replaceRequired(
     code,
