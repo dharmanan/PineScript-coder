@@ -68,6 +68,14 @@ export const defaultConfig: StrategyConfig = {
     alertsEnabled: true,
     webhookEnabled: true,
     showDashboard: true,
-    showBackground: true
+    showBackground: true,
+    enforceChartTimeframe: true
+  },
+  visual: {
+    profile: "clean",
+    colorBars: false,
+    showSignalScore: false,
+    showRiskOutcomeLabels: true,
+    showTrendRibbon: false
   }
 };
