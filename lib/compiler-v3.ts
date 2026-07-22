@@ -54,12 +54,7 @@ export function compilePine(config: StrategyConfig): string {
   }
 
   const labelSize = visual.labelSize === "tiny" ? "size.tiny" : visual.labelSize === "small" ? "size.small" : "size.normal";
-  code = code
-    .replace(/size=size\.tiny\)/g, `size=${labelSize})`)
-    .replace('text="LONG"', 'text=visualProfile == "Advanced" ? "LONG\\n✓" : "LONG"')
-    .replace('text="SHORT"', 'text=visualProfile == "Advanced" ? "SHORT\\n✓" : "SHORT"')
-    .replace('text="BUY"', 'text=visualProfile == "Advanced" ? "BUY\\n✓" : "BUY"')
-    .replace('text="EXIT"', 'text=visualProfile == "Advanced" ? "EXIT\\n✓" : "EXIT"');
+  code = code.replace(/size=size\.tiny\)/g, `size=${labelSize})`);
 
   const setupColorExpression = isSpot
     ? "buySetup ? color.new(color.lime, visualProfile == \"Advanced\" ? 45 : 70) : na"
@@ -100,8 +95,6 @@ export function compilePine(config: StrategyConfig): string {
   }
 
   if (config.execution.showDashboard) {
-    const dashboardExtras = `\n    table.cell(dashboard, 0, ${allowShort && !isSpot ? 5 : 5}, "Chart TF")\n    table.cell(dashboard, 1, ${allowShort && !isSpot ? 5 : 5}, chartTimeframeOk ? "OK" : "WRONG: " + expectedChartTimeframe, text_color=chartTimeframeOk ? color.lime : color.red)`;
-
     code = code.replace(
       /var table dashboard = table\.new\(position\.top_right, 2, (\d+), border_width=1\)/,
       (_match, rows) => `var table dashboard = table.new(position.top_right, 2, ${Number(rows) + 1}, border_width=1)`
