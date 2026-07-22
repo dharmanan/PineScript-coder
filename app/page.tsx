@@ -5,7 +5,8 @@ import { compilePine } from "@/lib/compiler";
 import { defaultConfig } from "@/lib/defaults";
 import { explainConfig } from "@/lib/explain";
 import { presets } from "@/lib/presets";
-import type { StrategyConfig } from "@/lib/types";
+import { applyVisualProfile } from "@/lib/visual-profile-config";
+import type { StrategyConfig, VisualProfile } from "@/lib/types";
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 
@@ -59,6 +60,11 @@ export default function Home() {
       volume: { ...current.volume, multiplier: value === "frequent" ? 1 : value === "balanced" ? 1.1 : 1.25 },
       momentum: { ...current.momentum, adxThreshold: value === "frequent" ? 15 : value === "balanced" ? 20 : 25 }
     }));
+  };
+
+  const chooseVisualProfile = (profile: VisualProfile) => {
+    setSelectedPreset("Custom configuration");
+    setConfig((current) => applyVisualProfile(current, profile));
   };
 
   const download = () => {
@@ -164,6 +170,11 @@ export default function Home() {
               {config.momentum.divergenceEnabled && <NumberSelect label="Pivot strength" value={config.momentum.divergencePivot} onChange={(v) => setNested("momentum", "divergencePivot", v)} options={pivotLengths} />}
               <Check label="Volume confirmation" checked={config.volume.enabled} onChange={(v) => setNested("volume", "enabled", v)} />
               {config.volume.enabled && <div className="two"><NumberSelect label="Volume average" value={config.volume.averageLength} onChange={(v) => setNested("volume", "averageLength", v)} options={averageLengths} /><NumberSelect label="Minimum multiplier" value={config.volume.multiplier} onChange={(v) => setNested("volume", "multiplier", v)} options={multipliers} /></div>}
+            </Group>
+
+            <Group title="Visual profile">
+              <SelectField label="Chart presentation" value={config.visual.profile} onChange={(v) => chooseVisualProfile(v as VisualProfile)} options={[["clean", "Clean"], ["enhanced", "Enhanced"], ["advanced", "Advanced"]]} />
+              <p className="notice">Clean keeps the chart minimal. Enhanced adds setup bar colors and a trend ribbon. Advanced uses the strongest visual emphasis while keeping the same signal rules.</p>
             </Group>
 
             <Group title="Risk and execution">
