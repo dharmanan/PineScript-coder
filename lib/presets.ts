@@ -9,13 +9,14 @@ const preset = (overrides: Partial<StrategyConfig> & { name: string }): Strategy
   momentum: { ...defaultConfig.momentum, ...(overrides.momentum ?? {}) },
   volume: { ...defaultConfig.volume, ...(overrides.volume ?? {}) },
   risk: { ...defaultConfig.risk, ...(overrides.risk ?? {}) },
-  execution: { ...defaultConfig.execution, ...(overrides.execution ?? {}) }
+  execution: { ...defaultConfig.execution, ...(overrides.execution ?? {}) },
+  visual: { ...defaultConfig.visual, ...(overrides.visual ?? {}) }
 });
 
 export const presets: StrategyConfig[] = [
   preset({ name: "Balanced Intraday", style: "intraday", entryTrigger: "pullback_reclaim" }),
   preset({ name: "Fast EMA Scalper", style: "scalp", chartTimeframe: "5", entryTrigger: "ema_cross", trend: { ...defaultConfig.trend, emaFast: 9, emaSlow: 21, longMaEnabled: false, vwapEnabled: true }, higherTimeframe: { ...defaultConfig.higherTimeframe, timeframe: "60", length: 50 }, volume: { ...defaultConfig.volume, multiplier: 1.2 }, risk: { ...defaultConfig.risk, atrMultiple: 1.5, riskReward: 1.5 }, execution: { ...defaultConfig.execution, cooldownBars: 3 } }),
-  preset({ name: "VWAP Session Trader", style: "intraday", entryTrigger: "vwap_reclaim", trend: { ...defaultConfig.trend, emaEnabled: true, emaFast: 9, emaSlow: 21, longMaEnabled: false, vwapEnabled: true }, higherTimeframe: { ...defaultConfig.higherTimeframe, enabled: false }, execution: { ...defaultConfig.execution, sessionEnabled: true, session: "0930-1600" } }),
+  preset({ name: "VWAP Session Trader", style: "intraday", entryTrigger: "vwap_reclaim", trend: { ...defaultConfig.trend, emaEnabled: true, emaFast: 9, emaSlow: 21, longMaEnabled: false, vwapEnabled: true }, higherTimeframe: { ...defaultConfig.higherTimeframe, enabled: false }, execution: { ...defaultConfig.execution, sessionEnabled: true, session: "0930-1600", sessionTimezone: "America/New_York" } }),
   preset({ name: "4H Swing Trend", style: "swing", chartTimeframe: "240", entryTrigger: "pullback_reclaim", trend: { ...defaultConfig.trend, emaFast: 50, emaSlow: 100, longMaLength: 200, vwapEnabled: false }, higherTimeframe: { ...defaultConfig.higherTimeframe, timeframe: "D", length: 200 }, momentum: { ...defaultConfig.momentum, adxEnabled: true, adxThreshold: 22 }, risk: { ...defaultConfig.risk, atrMultiple: 2.5, riskReward: 3 } }),
   preset({ name: "Spot Accumulation", style: "spot", direction: "spot_buy_exit", chartTimeframe: "D", entryTrigger: "pullback_reclaim", spotExitMode: "combined", trend: { ...defaultConfig.trend, emaFast: 50, emaSlow: 100, longMaLength: 200, vwapEnabled: false }, higherTimeframe: { ...defaultConfig.higherTimeframe, timeframe: "W", length: 50, closedBarOnly: true }, momentum: { ...defaultConfig.momentum, rsiLong: 45, rsiShort: 40, rsiExit: 65 }, risk: { ...defaultConfig.risk, stopMode: "none", takeProfitMode: "none" } }),
   preset({ name: "Supertrend Volume", entryTrigger: "supertrend_flip", trend: { ...defaultConfig.trend, emaEnabled: false, supertrendEnabled: true, vwapEnabled: false }, volume: { ...defaultConfig.volume, multiplier: 1.25 }, momentum: { ...defaultConfig.momentum, rsiEnabled: false } }),
