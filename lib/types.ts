@@ -6,6 +6,7 @@ export type StopMode = "atr" | "percent" | "swing" | "none";
 export type TakeProfitMode = "risk_reward" | "percent" | "opposite_signal" | "none";
 export type EntryTrigger = "trend_state" | "ema_cross" | "pullback_reclaim" | "vwap_reclaim" | "supertrend_flip" | "breakout";
 export type SpotExitMode = "trend_break" | "ema_cross" | "rsi_overbought" | "htf_bearish" | "combined";
+export type VisualProfile = "clean" | "enhanced" | "advanced";
 
 export interface StrategyConfig {
   name: string;
@@ -76,5 +77,13 @@ export interface StrategyConfig {
     webhookEnabled: boolean;
     showDashboard: boolean;
     showBackground: boolean;
+    enforceChartTimeframe: boolean;
+  };
+  visual: {
+    profile: VisualProfile;
+    colorBars: boolean;
+    showSignalScore: boolean;
+    showRiskOutcomeLabels: boolean;
+    showTrendRibbon: boolean;
   };
 }
