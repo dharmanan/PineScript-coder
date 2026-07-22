@@ -7,6 +7,7 @@ export type TakeProfitMode = "risk_reward" | "percent" | "opposite_signal" | "no
 export type EntryTrigger = "trend_state" | "ema_cross" | "pullback_reclaim" | "vwap_reclaim" | "supertrend_flip" | "breakout";
 export type SpotExitMode = "trend_break" | "ema_cross" | "rsi_overbought" | "htf_bearish" | "combined";
 export type VisualProfile = "clean" | "enhanced" | "advanced";
+export type SessionTimezone = "exchange" | "America/New_York" | "Europe/London" | "Europe/Istanbul" | "UTC";
 
 export interface StrategyConfig {
   name: string;
@@ -73,6 +74,7 @@ export interface StrategyConfig {
     cooldownBars: number;
     sessionEnabled: boolean;
     session: string;
+    sessionTimezone: SessionTimezone;
     alertsEnabled: boolean;
     webhookEnabled: boolean;
     showDashboard: boolean;
