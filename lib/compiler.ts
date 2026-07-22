@@ -1,12 +1,19 @@
 import type { StrategyConfig } from "./types";
 
-const b = (value: boolean) => (value ? "true" : "false");
+const bool = (value: boolean) => (value ? "true" : "false");
+const q = (value: string) => value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
+const joinConditions = (items: string[]) => items.length ? items.join(" and ") : "true";
 
 export function compilePine(c: StrategyConfig): string {
-  const strategy = c.outputMode === "strategy";
-  const declaration = strategy
-    ? `strategy("${c.name}", overlay=true, pyramiding=0, process_orders_on_close=true, initial_capital=10000, commission_type=strategy.commission.percent, commission_value=0.1)`
-    : `indicator("${c.name}", overlay=true, max_labels_count=500)`;
+  const isStrategy = c.outputMode === "strategy";
+  const isSpot = c.direction === "spot_buy_exit";
+  const isLongOnly = c.direction === "long_only";
+  const allowShort = c.direction === "long_short";
+
+  const declaration = isStrategy
+    ? `strategy("${q(c.name)}", overlay=true, pyramiding=0, process_orders_on_close=true, initial_capital=10000, commission_type=strategy.commission.percent, commission_value=0.1)`
+    : `indicator("${q(c.name)}", overlay=true, max_labels_count=500, max_lines_count=500)`;
 
   const lines: string[] = [
     "//@version=6",
@@ -15,19 +22,24 @@ export function compilePine(c: StrategyConfig): string {
     declaration,
     "",
     "// === Inputs ===",
-    `confirmedOnly = input.bool(${b(c.confirmedBarsOnly)}, "Confirmed candles only")`,
-    `cooldownBars = input.int(${c.execution.cooldownBars}, "Signal cooldown bars", minval=0)`,
+    `confirmedOnly = input.bool(${bool(c.confirmedBarsOnly)}, "Confirmed candles only")`,
+    `cooldownBars = input.int(${c.execution.cooldownBars}, "Signal cooldown bars", minval=0)`
   ];
 
-  if (c.trend.emaEnabled) {
+  if (c.trend.emaEnabled || c.entryTrigger === "ema_cross" || c.entryTrigger === "pullback_reclaim" || c.spotExitMode === "ema_cross") {
     lines.push(`emaFastLen = input.int(${c.trend.emaFast}, "Fast EMA", minval=1)`);
     lines.push(`emaSlowLen = input.int(${c.trend.emaSlow}, "Slow EMA", minval=1)`);
   }
-  if (c.trend.longMaEnabled) lines.push(`longMaLen = input.int(${c.trend.longMaLength}, "Long MA", minval=1)`);
-  if (c.momentum.rsiEnabled || c.momentum.divergenceEnabled) {
+  if (c.trend.longMaEnabled || c.spotExitMode === "trend_break" || c.spotExitMode === "combined") {
+    lines.push(`longMaLen = input.int(${c.trend.longMaLength}, "Long MA", minval=1)`);
+  }
+  if (c.momentum.rsiEnabled || c.momentum.divergenceEnabled || isSpot) {
     lines.push(`rsiLen = input.int(${c.momentum.rsiLength}, "RSI length", minval=2)`);
     lines.push(`rsiLongLevel = input.float(${c.momentum.rsiLong}, "RSI long threshold")`);
-    lines.push(`rsiShortLevel = input.float(${c.momentum.rsiShort}, "RSI short threshold")`);
+    if (allowShort) lines.push(`rsiShortLevel = input.float(${c.momentum.rsiShort}, "RSI short threshold")`);
+    if (isSpot && (c.spotExitMode === "rsi_overbought" || c.spotExitMode === "combined")) {
+      lines.push(`rsiExitLevel = input.float(${c.momentum.rsiExit}, "RSI spot exit threshold")`);
+    }
   }
   if (c.volume.enabled) {
     lines.push(`volumeLen = input.int(${c.volume.averageLength}, "Volume average", minval=1)`);
@@ -37,40 +49,46 @@ export function compilePine(c: StrategyConfig): string {
     lines.push(`adxLen = input.int(${c.momentum.adxLength}, "ADX length", minval=2)`);
     lines.push(`adxThreshold = input.float(${c.momentum.adxThreshold}, "ADX threshold")`);
   }
-  if (c.trend.supertrendEnabled) {
+  if (c.trend.supertrendEnabled || c.entryTrigger === "supertrend_flip" || c.higherTimeframe.method === "supertrend") {
     lines.push(`stAtrLen = input.int(${c.trend.supertrendAtrLength}, "Supertrend ATR length", minval=1)`);
     lines.push(`stFactor = input.float(${c.trend.supertrendFactor}, "Supertrend factor", minval=0.1)`);
   }
-  if (c.higherTimeframe.enabled) lines.push(`htf = input.timeframe("${c.higherTimeframe.timeframe}", "Higher timeframe")`);
-  if (c.execution.sessionEnabled) lines.push(`tradeSession = input.session("${c.execution.session}", "Trading session")`);
-  if (strategy && c.risk.stopMode === "atr") {
+  if (c.entryTrigger === "breakout") lines.push(`breakoutLen = input.int(${c.trend.breakoutLength}, "Breakout lookback", minval=2)`);
+  if (c.higherTimeframe.enabled) lines.push(`htf = input.timeframe("${q(c.higherTimeframe.timeframe)}", "Higher timeframe")`);
+  if (c.execution.sessionEnabled) lines.push(`tradeSession = input.session("${q(c.execution.session)}", "Trading session")`);
+
+  if (isStrategy && c.risk.stopMode === "atr") {
     lines.push(`atrLen = input.int(${c.risk.atrLength}, "ATR length", minval=1)`);
     lines.push(`atrMultiple = input.float(${c.risk.atrMultiple}, "ATR stop multiple", minval=0.1)`);
   }
-  if (strategy && c.risk.stopMode === "percent") lines.push(`stopPercent = input.float(${c.risk.stopPercent}, "Stop %", minval=0.1) / 100`);
-  if (strategy && c.risk.takeProfitMode === "risk_reward") lines.push(`riskReward = input.float(${c.risk.riskReward}, "Risk/reward", minval=0.1)`);
-  if (strategy && c.risk.takeProfitMode === "percent") lines.push(`takeProfitPercent = input.float(${c.risk.takeProfitPercent}, "Take profit %", minval=0.1) / 100`);
+  if (isStrategy && c.risk.stopMode === "percent") lines.push(`stopPercent = input.float(${c.risk.stopPercent}, "Stop %", minval=0.1) / 100`);
+  if (isStrategy && c.risk.stopMode === "swing") lines.push(`swingLen = input.int(${c.risk.swingLength}, "Swing stop lookback", minval=2)`);
+  if (isStrategy && c.risk.takeProfitMode === "risk_reward") lines.push(`riskReward = input.float(${c.risk.riskReward}, "Risk/reward", minval=0.1)`);
+  if (isStrategy && c.risk.takeProfitMode === "percent") lines.push(`takeProfitPercent = input.float(${c.risk.takeProfitPercent}, "Take profit %", minval=0.1) / 100`);
 
   lines.push("", "// === Core calculations ===");
-  if (c.trend.emaEnabled) {
-    lines.push("emaFast = ta.ema(close, emaFastLen)", "emaSlow = ta.ema(close, emaSlowLen)");
-  }
-  if (c.trend.longMaEnabled) {
-    lines.push(`longMa = ${c.trend.longMaType === "sma" ? "ta.sma" : "ta.ema"}(close, longMaLen)`);
-  }
-  if (c.trend.vwapEnabled) lines.push("vwapValue = ta.vwap(hlc3)");
-  if (c.trend.supertrendEnabled) lines.push("[supertrendValue, supertrendDirection] = ta.supertrend(stFactor, stAtrLen)");
-  if (c.momentum.rsiEnabled || c.momentum.divergenceEnabled) lines.push("rsiValue = ta.rsi(close, rsiLen)");
+
+  const needsEma = c.trend.emaEnabled || c.entryTrigger === "ema_cross" || c.entryTrigger === "pullback_reclaim" || c.spotExitMode === "ema_cross";
+  const needsLongMa = c.trend.longMaEnabled || c.spotExitMode === "trend_break" || c.spotExitMode === "combined";
+  const needsRsi = c.momentum.rsiEnabled || c.momentum.divergenceEnabled || isSpot;
+  const needsSupertrend = c.trend.supertrendEnabled || c.entryTrigger === "supertrend_flip";
+
+  if (needsEma) lines.push("emaFast = ta.ema(close, emaFastLen)", "emaSlow = ta.ema(close, emaSlowLen)");
+  if (needsLongMa) lines.push(`longMa = ${c.trend.longMaType === "sma" ? "ta.sma" : "ta.ema"}(close, longMaLen)`);
+  if (c.trend.vwapEnabled || c.entryTrigger === "vwap_reclaim") lines.push("vwapValue = ta.vwap(hlc3)");
+  if (needsSupertrend) lines.push("[supertrendValue, supertrendDirection] = ta.supertrend(stFactor, stAtrLen)");
+  if (needsRsi) lines.push("rsiValue = ta.rsi(close, rsiLen)");
   if (c.momentum.macdEnabled) lines.push("[macdLine, macdSignal, macdHist] = ta.macd(close, 12, 26, 9)");
   if (c.momentum.adxEnabled) lines.push("[plusDI, minusDI, adxValue] = ta.dmi(adxLen, adxLen)");
   if (c.volume.enabled) lines.push("volumeAverage = ta.sma(volume, volumeLen)");
-  if (strategy && c.risk.stopMode === "atr") lines.push("atrValue = ta.atr(atrLen)");
+  if (isStrategy && c.risk.stopMode === "atr") lines.push("atrValue = ta.atr(atrLen)");
+  if (c.entryTrigger === "breakout") lines.push("previousHigh = ta.highest(high, breakoutLen)[1]", "previousLow = ta.lowest(low, breakoutLen)[1]");
 
   if (c.momentum.divergenceEnabled) {
     const p = c.momentum.divergencePivot;
     lines.push(
       "",
-      "// Confirmed pivot-based RSI divergence. Pivots are only known after the right-side bars complete.",
+      "// Confirmed pivot-based RSI divergence. Pivots appear after right-side bars complete.",
       `pricePivotLow = ta.pivotlow(low, ${p}, ${p})`,
       `pricePivotHigh = ta.pivothigh(high, ${p}, ${p})`,
       `rsiPivotLow = ta.pivotlow(rsiValue, ${p}, ${p})`,
@@ -85,142 +103,250 @@ export function compilePine(c: StrategyConfig): string {
   }
 
   if (c.higherTimeframe.enabled) {
-    const expr = c.higherTimeframe.method === "ema"
-      ? `close > ta.ema(close, ${c.higherTimeframe.length})`
-      : c.higherTimeframe.method === "sma"
-        ? `close > ta.sma(close, ${c.higherTimeframe.length})`
-        : `close > ta.ema(close, ${c.higherTimeframe.length})`;
-    lines.push("", "// Higher-timeframe bias uses lookahead_off to avoid future data.");
-    lines.push(`htfBull = request.security(syminfo.tickerid, htf, ${expr}, lookahead=barmerge.lookahead_off)`);
+    lines.push("", "// Higher-timeframe bias. lookahead_off prevents future leakage.");
+    const offset = c.higherTimeframe.closedBarOnly ? "[1]" : "";
+    const lookahead = c.higherTimeframe.closedBarOnly ? "barmerge.lookahead_on" : "barmerge.lookahead_off";
+    if (c.higherTimeframe.method === "supertrend") {
+      lines.push(`f_htfSupertrendBull() =>\n    [_, direction] = ta.supertrend(${c.trend.supertrendFactor}, ${c.trend.supertrendAtrLength})\n    direction${offset} < 0`);
+      lines.push(`htfBull = request.security(syminfo.tickerid, htf, f_htfSupertrendBull(), lookahead=${lookahead})`);
+    } else {
+      const fn = c.higherTimeframe.method === "ema" ? "ta.ema" : "ta.sma";
+      lines.push(`htfBull = request.security(syminfo.tickerid, htf, close${offset} > ${fn}(close, ${c.higherTimeframe.length})${offset}, lookahead=${lookahead})`);
+    }
     lines.push("htfBear = not htfBull");
   }
 
-  lines.push("", "// === Conditions ===");
-  const longConditions: string[] = [];
-  const shortConditions: string[] = [];
+  lines.push("", "// === Filters and triggers ===");
+  lines.push("confirmationOk = not confirmedOnly or barstate.isconfirmed");
+  if (c.execution.sessionEnabled) lines.push("sessionOk = not na(time(timeframe.period, tradeSession))");
+
+  const longFilters: string[] = [];
+  const shortFilters: string[] = [];
 
   if (c.trend.emaEnabled) {
-    longConditions.push("emaFast > emaSlow");
-    shortConditions.push("emaFast < emaSlow");
+    longFilters.push("emaFast > emaSlow");
+    shortFilters.push("emaFast < emaSlow");
   }
   if (c.trend.longMaEnabled) {
-    longConditions.push("close > longMa");
-    shortConditions.push("close < longMa");
+    longFilters.push("close > longMa");
+    shortFilters.push("close < longMa");
   }
   if (c.trend.vwapEnabled) {
-    longConditions.push("close > vwapValue");
-    shortConditions.push("close < vwapValue");
+    longFilters.push("close > vwapValue");
+    shortFilters.push("close < vwapValue");
   }
   if (c.trend.supertrendEnabled) {
-    longConditions.push("supertrendDirection < 0");
-    shortConditions.push("supertrendDirection > 0");
+    longFilters.push("supertrendDirection < 0");
+    shortFilters.push("supertrendDirection > 0");
   }
   if (c.momentum.rsiEnabled) {
-    longConditions.push("rsiValue >= rsiLongLevel");
-    shortConditions.push("rsiValue <= rsiShortLevel");
+    longFilters.push("rsiValue >= rsiLongLevel");
+    if (allowShort) shortFilters.push("rsiValue <= rsiShortLevel");
   }
   if (c.momentum.macdEnabled) {
-    longConditions.push("macdLine > macdSignal and macdHist > 0");
-    shortConditions.push("macdLine < macdSignal and macdHist < 0");
+    longFilters.push("macdLine > macdSignal and macdHist > 0");
+    shortFilters.push("macdLine < macdSignal and macdHist < 0");
   }
   if (c.momentum.adxEnabled) {
-    longConditions.push("adxValue >= adxThreshold and plusDI > minusDI");
-    shortConditions.push("adxValue >= adxThreshold and minusDI > plusDI");
+    longFilters.push("adxValue >= adxThreshold and plusDI > minusDI");
+    shortFilters.push("adxValue >= adxThreshold and minusDI > plusDI");
   }
   if (c.momentum.divergenceEnabled) {
-    longConditions.push("bullishDivergence");
-    shortConditions.push("bearishDivergence");
+    longFilters.push("bullishDivergence");
+    shortFilters.push("bearishDivergence");
   }
   if (c.volume.enabled) {
-    longConditions.push("volume >= volumeAverage * volumeMultiplier");
-    shortConditions.push("volume >= volumeAverage * volumeMultiplier");
+    longFilters.push("volume >= volumeAverage * volumeMultiplier");
+    shortFilters.push("volume >= volumeAverage * volumeMultiplier");
   }
   if (c.higherTimeframe.enabled && c.higherTimeframe.blockCounterTrend) {
-    longConditions.push("htfBull");
-    shortConditions.push("htfBear");
+    longFilters.push("htfBull");
+    shortFilters.push("htfBear");
   }
   if (c.execution.sessionEnabled) {
-    longConditions.push("not na(time(timeframe.period, tradeSession))");
-    shortConditions.push("not na(time(timeframe.period, tradeSession))");
+    longFilters.push("sessionOk");
+    shortFilters.push("sessionOk");
   }
-  if (c.confirmedBarsOnly) {
-    longConditions.push("barstate.isconfirmed");
-    shortConditions.push("barstate.isconfirmed");
+  longFilters.push("confirmationOk");
+  shortFilters.push("confirmationOk");
+
+  let longTrigger = "true";
+  let shortTrigger = "true";
+  switch (c.entryTrigger) {
+    case "ema_cross":
+      longTrigger = "ta.crossover(emaFast, emaSlow)";
+      shortTrigger = "ta.crossunder(emaFast, emaSlow)";
+      break;
+    case "pullback_reclaim":
+      longTrigger = "ta.crossover(close, emaFast)";
+      shortTrigger = "ta.crossunder(close, emaFast)";
+      break;
+    case "vwap_reclaim":
+      longTrigger = "ta.crossover(close, vwapValue)";
+      shortTrigger = "ta.crossunder(close, vwapValue)";
+      break;
+    case "supertrend_flip":
+      longTrigger = "ta.change(supertrendDirection) < 0";
+      shortTrigger = "ta.change(supertrendDirection) > 0";
+      break;
+    case "breakout":
+      longTrigger = "ta.crossover(close, previousHigh)";
+      shortTrigger = "ta.crossunder(close, previousLow)";
+      break;
+    case "trend_state":
+    default:
+      longTrigger = "true";
+      shortTrigger = "true";
   }
 
-  const longBase = longConditions.length ? longConditions.join(" and ") : "true";
-  const shortBase = shortConditions.length ? shortConditions.join(" and ") : "true";
-  lines.push(`longBase = ${longBase}`);
-  lines.push(`shortBase = ${shortBase}`);
+  lines.push(`longSetup = ${joinConditions(longFilters)}`);
+  if (allowShort) lines.push(`shortSetup = ${joinConditions(shortFilters)}`);
+  lines.push(`longTrigger = ${longTrigger}`);
+  if (allowShort) lines.push(`shortTrigger = ${shortTrigger}`);
   lines.push("var int lastSignalBar = na");
   lines.push("cooldownOk = na(lastSignalBar) or bar_index - lastSignalBar > cooldownBars");
-  lines.push("longSignal = longBase and cooldownOk");
-  lines.push("shortSignal = shortBase and cooldownOk");
-  if (c.direction === "long_only" || c.direction === "spot_buy_exit") lines.push("shortSignal := false");
-  lines.push("if longSignal or shortSignal\n    lastSignalBar := bar_index");
+
+  if (isSpot) {
+    const exitParts: string[] = ["confirmationOk"];
+    if (c.spotExitMode === "trend_break") exitParts.push("ta.crossunder(close, longMa)");
+    if (c.spotExitMode === "ema_cross") exitParts.push("ta.crossunder(emaFast, emaSlow)");
+    if (c.spotExitMode === "rsi_overbought") exitParts.push("ta.crossunder(rsiValue, rsiExitLevel)");
+    if (c.spotExitMode === "htf_bearish") exitParts.push(c.higherTimeframe.enabled ? "htfBear and not htfBear[1]" : "false");
+    if (c.spotExitMode === "combined") {
+      const combined = ["ta.crossunder(close, longMa)", "ta.crossunder(emaFast, emaSlow)", "ta.crossunder(rsiValue, rsiExitLevel)"];
+      if (c.higherTimeframe.enabled) combined.push("htfBear and not htfBear[1]");
+      exitParts.push(`(${combined.join(" or ")})`);
+    }
+    lines.push("buySetup = longSetup");
+    lines.push("var bool spotActive = false");
+    lines.push("buySignal = buySetup and longTrigger and cooldownOk and not spotActive");
+    lines.push(`rawExitSignal = ${joinConditions(exitParts)}`);
+    lines.push("exitSignal = rawExitSignal and spotActive");
+    lines.push("if buySignal\n    spotActive := true\n    lastSignalBar := bar_index");
+    lines.push("if exitSignal\n    spotActive := false");
+  } else {
+    lines.push("longSignal = longSetup and longTrigger and cooldownOk");
+    if (allowShort) lines.push("shortSignal = shortSetup and shortTrigger and cooldownOk");
+    lines.push(allowShort ? "if longSignal or shortSignal\n    lastSignalBar := bar_index" : "if longSignal\n    lastSignalBar := bar_index");
+  }
 
   lines.push("", "// === Visuals ===");
-  if (c.trend.emaEnabled) lines.push("plot(emaFast, \"Fast EMA\", color=color.aqua)", "plot(emaSlow, \"Slow EMA\", color=color.orange)");
-  if (c.trend.longMaEnabled) lines.push("plot(longMa, \"Long MA\", color=color.yellow, linewidth=2)");
-  if (c.trend.vwapEnabled) lines.push("plot(vwapValue, \"VWAP\", color=color.purple)");
-  if (c.trend.supertrendEnabled) lines.push("plot(supertrendValue, \"Supertrend\", color=supertrendDirection < 0 ? color.lime : color.red, linewidth=2)");
-  lines.push("plotshape(longSignal, title=\"Long\", style=shape.labelup, location=location.belowbar, color=color.lime, text=\"LONG\", textcolor=color.black, size=size.tiny)");
-  lines.push("plotshape(shortSignal, title=\"Short\", style=shape.labeldown, location=location.abovebar, color=color.red, text=\"SHORT\", textcolor=color.white, size=size.tiny)");
+  if (needsEma) lines.push("plot(emaFast, \"Fast EMA\", color=color.aqua)", "plot(emaSlow, \"Slow EMA\", color=color.orange)");
+  if (needsLongMa) lines.push("plot(longMa, \"Long MA\", color=color.yellow, linewidth=2)");
+  if (c.trend.vwapEnabled || c.entryTrigger === "vwap_reclaim") lines.push("plot(vwapValue, \"VWAP\", color=color.purple)");
+  if (needsSupertrend) lines.push("plot(supertrendValue, \"Supertrend\", color=supertrendDirection < 0 ? color.lime : color.red, linewidth=2)");
+
+  if (isSpot) {
+    lines.push("plotshape(buySignal, title=\"Spot buy\", style=shape.labelup, location=location.belowbar, color=color.lime, text=\"BUY\", textcolor=color.black, size=size.tiny)");
+    lines.push("plotshape(exitSignal, title=\"Spot exit\", style=shape.labeldown, location=location.abovebar, color=color.orange, text=\"EXIT\", textcolor=color.black, size=size.tiny)");
+  } else {
+    lines.push("plotshape(longSignal, title=\"Long\", style=shape.labelup, location=location.belowbar, color=color.lime, text=\"LONG\", textcolor=color.black, size=size.tiny)");
+    if (allowShort) lines.push("plotshape(shortSignal, title=\"Short\", style=shape.labeldown, location=location.abovebar, color=color.red, text=\"SHORT\", textcolor=color.white, size=size.tiny)");
+  }
+
   if (c.execution.showBackground && c.higherTimeframe.enabled) lines.push("bgcolor(htfBull ? color.new(color.green, 92) : color.new(color.red, 92), title=\"HTF bias\")");
 
   if (c.execution.showDashboard) {
-    lines.push(
-      "var table dashboard = table.new(position.top_right, 2, 4, border_width=1)",
-      "if barstate.islast",
-      "    table.cell(dashboard, 0, 0, \"PineForge\", bgcolor=color.new(color.blue, 70), text_color=color.white)",
-      `    table.cell(dashboard, 1, 0, "${c.style}")`,
-      "    table.cell(dashboard, 0, 1, \"Long ready\")",
-      "    table.cell(dashboard, 1, 1, longBase ? \"YES\" : \"NO\", text_color=longBase ? color.lime : color.gray)",
-      "    table.cell(dashboard, 0, 2, \"Short ready\")",
-      "    table.cell(dashboard, 1, 2, shortBase ? \"YES\" : \"NO\", text_color=shortBase ? color.red : color.gray)",
-      "    table.cell(dashboard, 0, 3, \"Confirmed\")",
-      "    table.cell(dashboard, 1, 3, barstate.isconfirmed ? \"YES\" : \"WAIT\")"
-    );
+    if (isSpot) {
+      lines.push(
+        "var table dashboard = table.new(position.top_right, 2, 5, border_width=1)",
+        "if barstate.islast",
+        "    table.cell(dashboard, 0, 0, \"PineForge\", bgcolor=color.new(color.blue, 70), text_color=color.white)",
+        "    table.cell(dashboard, 1, 0, \"SPOT\")",
+        "    table.cell(dashboard, 0, 1, \"HTF bias\")",
+        `    table.cell(dashboard, 1, 1, ${c.higherTimeframe.enabled ? "htfBull ? \"BULL\" : \"BEAR\"" : "\"OFF\""}, text_color=${c.higherTimeframe.enabled ? "htfBull ? color.lime : color.red" : "color.gray"})`,
+        "    table.cell(dashboard, 0, 2, \"Buy setup\")",
+        "    table.cell(dashboard, 1, 2, buySetup ? \"READY\" : \"NO\", text_color=buySetup ? color.lime : color.gray)",
+        "    table.cell(dashboard, 0, 3, \"Buy signal\")",
+        "    table.cell(dashboard, 1, 3, buySignal ? \"YES\" : \"WAIT\", text_color=buySignal ? color.lime : color.gray)",
+        "    table.cell(dashboard, 0, 4, \"Exit signal\")",
+        "    table.cell(dashboard, 1, 4, exitSignal ? \"YES\" : \"NO\", text_color=exitSignal ? color.orange : color.gray)"
+      );
+    } else {
+      const rows = allowShort ? 5 : 4;
+      lines.push(
+        `var table dashboard = table.new(position.top_right, 2, ${rows}, border_width=1)`,
+        "if barstate.islast",
+        "    table.cell(dashboard, 0, 0, \"PineForge\", bgcolor=color.new(color.blue, 70), text_color=color.white)",
+        `    table.cell(dashboard, 1, 0, \"${isLongOnly ? "LONG ONLY" : "LONG/SHORT"}\")`,
+        "    table.cell(dashboard, 0, 1, \"Long setup\")",
+        "    table.cell(dashboard, 1, 1, longSetup ? \"READY\" : \"NO\", text_color=longSetup ? color.lime : color.gray)",
+        "    table.cell(dashboard, 0, 2, \"Long signal\")",
+        "    table.cell(dashboard, 1, 2, longSignal ? \"YES\" : \"WAIT\", text_color=longSignal ? color.lime : color.gray)"
+      );
+      if (allowShort) {
+        lines.push(
+          "    table.cell(dashboard, 0, 3, \"Short setup\")",
+          "    table.cell(dashboard, 1, 3, shortSetup ? \"READY\" : \"NO\", text_color=shortSetup ? color.red : color.gray)",
+          "    table.cell(dashboard, 0, 4, \"Short signal\")",
+          "    table.cell(dashboard, 1, 4, shortSignal ? \"YES\" : \"WAIT\", text_color=shortSignal ? color.red : color.gray)"
+        );
+      } else {
+        lines.push(
+          "    table.cell(dashboard, 0, 3, \"Confirmed\")",
+          "    table.cell(dashboard, 1, 3, confirmationOk ? \"YES\" : \"WAIT\")"
+        );
+      }
+    }
   }
 
-  if (strategy) {
+  if (isStrategy) {
     lines.push("", "// === Strategy orders ===");
-    lines.push("if longSignal and strategy.position_size <= 0\n    strategy.entry(\"Long\", strategy.long, alert_message=\"LONG {{ticker}} @ {{close}}\")");
-    if (c.direction === "long_short") lines.push("if shortSignal and strategy.position_size >= 0\n    strategy.entry(\"Short\", strategy.short, alert_message=\"SHORT {{ticker}} @ {{close}}\")");
-    if (c.direction === "spot_buy_exit") lines.push("if shortBase and strategy.position_size > 0\n    strategy.close(\"Long\", alert_message=\"SPOT EXIT {{ticker}} @ {{close}}\")");
-
-    if (c.risk.stopMode !== "none" || c.risk.takeProfitMode !== "none") {
-      if (c.risk.stopMode === "atr") {
-        lines.push("longStop = strategy.position_avg_price - atrValue * atrMultiple", "shortStop = strategy.position_avg_price + atrValue * atrMultiple");
-      } else if (c.risk.stopMode === "percent") {
-        lines.push("longStop = strategy.position_avg_price * (1 - stopPercent)", "shortStop = strategy.position_avg_price * (1 + stopPercent)");
-      } else {
-        lines.push("longStop = ta.lowest(low, 10)", "shortStop = ta.highest(high, 10)");
-      }
-      if (c.risk.takeProfitMode === "risk_reward") {
-        lines.push("longTarget = strategy.position_avg_price + (strategy.position_avg_price - longStop) * riskReward", "shortTarget = strategy.position_avg_price - (shortStop - strategy.position_avg_price) * riskReward");
-      } else if (c.risk.takeProfitMode === "percent") {
-        lines.push("longTarget = strategy.position_avg_price * (1 + takeProfitPercent)", "shortTarget = strategy.position_avg_price * (1 - takeProfitPercent)");
-      } else {
-        lines.push("float longTarget = na", "float shortTarget = na");
-      }
-      lines.push("if strategy.position_size > 0\n    strategy.exit(\"Long Exit\", \"Long\", stop=longStop, limit=longTarget, alert_message=\"LONG EXIT {{ticker}}\")");
-      if (c.direction === "long_short") lines.push("if strategy.position_size < 0\n    strategy.exit(\"Short Exit\", \"Short\", stop=shortStop, limit=shortTarget, alert_message=\"SHORT EXIT {{ticker}}\")");
+    if (isSpot) {
+      lines.push("if buySignal and strategy.position_size <= 0\n    strategy.entry(\"Spot Long\", strategy.long, alert_message=\"SPOT BUY {{ticker}} @ {{close}}\")");
+      lines.push("if exitSignal and strategy.position_size > 0\n    strategy.close(\"Spot Long\", alert_message=\"SPOT EXIT {{ticker}} @ {{close}}\")");
+    } else {
+      lines.push("if longSignal and strategy.position_size <= 0\n    strategy.entry(\"Long\", strategy.long, alert_message=\"LONG {{ticker}} @ {{close}}\")");
+      if (allowShort) lines.push("if shortSignal and strategy.position_size >= 0\n    strategy.entry(\"Short\", strategy.short, alert_message=\"SHORT {{ticker}} @ {{close}}\")");
     }
-    if (c.risk.takeProfitMode === "opposite_signal") {
-      lines.push("if shortSignal and strategy.position_size > 0\n    strategy.close(\"Long\")");
-      if (c.direction === "long_short") lines.push("if longSignal and strategy.position_size < 0\n    strategy.close(\"Short\")");
+
+    if (c.risk.stopMode !== "none" || c.risk.takeProfitMode === "risk_reward" || c.risk.takeProfitMode === "percent") {
+      if (c.risk.stopMode === "atr") {
+        lines.push("longStop = strategy.position_avg_price - atrValue * atrMultiple");
+        if (allowShort) lines.push("shortStop = strategy.position_avg_price + atrValue * atrMultiple");
+      } else if (c.risk.stopMode === "percent") {
+        lines.push("longStop = strategy.position_avg_price * (1 - stopPercent)");
+        if (allowShort) lines.push("shortStop = strategy.position_avg_price * (1 + stopPercent)");
+      } else if (c.risk.stopMode === "swing") {
+        lines.push("longStop = ta.lowest(low, swingLen)");
+        if (allowShort) lines.push("shortStop = ta.highest(high, swingLen)");
+      } else {
+        lines.push("float longStop = na");
+        if (allowShort) lines.push("float shortStop = na");
+      }
+
+      if (c.risk.takeProfitMode === "risk_reward") {
+        lines.push("longTarget = strategy.position_avg_price + (strategy.position_avg_price - longStop) * riskReward");
+        if (allowShort) lines.push("shortTarget = strategy.position_avg_price - (shortStop - strategy.position_avg_price) * riskReward");
+      } else if (c.risk.takeProfitMode === "percent") {
+        lines.push("longTarget = strategy.position_avg_price * (1 + takeProfitPercent)");
+        if (allowShort) lines.push("shortTarget = strategy.position_avg_price * (1 - takeProfitPercent)");
+      } else {
+        lines.push("float longTarget = na");
+        if (allowShort) lines.push("float shortTarget = na");
+      }
+
+      const longEntryId = isSpot ? "Spot Long" : "Long";
+      lines.push(`if strategy.position_size > 0\n    strategy.exit("Long Risk Exit", "${longEntryId}", stop=longStop, limit=longTarget, alert_message="LONG EXIT {{ticker}}")`);
+      if (allowShort) lines.push("if strategy.position_size < 0\n    strategy.exit(\"Short Risk Exit\", \"Short\", stop=shortStop, limit=shortTarget, alert_message=\"SHORT EXIT {{ticker}}\")");
+    }
+
+    if (!isSpot && c.risk.takeProfitMode === "opposite_signal") {
+      if (allowShort) {
+        lines.push("if shortSignal and strategy.position_size > 0\n    strategy.close(\"Long\")");
+        lines.push("if longSignal and strategy.position_size < 0\n    strategy.close(\"Short\")");
+      }
     }
   }
 
   if (c.execution.alertsEnabled) {
     lines.push("", "// === Alerts ===");
-    if (strategy) {
-      lines.push("if longSignal\n    alert(\"LONG {{ticker}} @ {{close}}\", alert.freq_once_per_bar_close)");
-      if (c.direction === "long_short") lines.push("if shortSignal\n    alert(\"SHORT {{ticker}} @ {{close}}\", alert.freq_once_per_bar_close)");
+    if (isSpot) {
+      lines.push("alertcondition(buySignal, \"Spot buy signal\", \"SPOT BUY {{ticker}} @ {{close}}\")");
+      lines.push("alertcondition(exitSignal, \"Spot exit signal\", \"SPOT EXIT {{ticker}} @ {{close}}\")");
     } else {
       lines.push("alertcondition(longSignal, \"Long signal\", \"LONG {{ticker}} @ {{close}}\")");
-      if (c.direction === "long_short") lines.push("alertcondition(shortSignal, \"Short signal\", \"SHORT {{ticker}} @ {{close}}\")");
+      if (allowShort) lines.push("alertcondition(shortSignal, \"Short signal\", \"SHORT {{ticker}} @ {{close}}\")");
     }
   }
 

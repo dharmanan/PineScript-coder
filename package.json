@@ -1,6 +1,6 @@
 {
-  "name": "pineforge-studio",
-  "version": "0.1.0",
+  "name": "pinescript-coder",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

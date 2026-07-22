@@ -1,49 +1,41 @@
-# PineForge Studio
+# PineScript Coder / PineForge Studio
 
-A deterministic, guided Pine Script v6 strategy and indicator builder.
+A deterministic Pine Script v6 strategy and indicator builder. It is not a small snippet generator: users choose trading style, direction, entry event, higher-timeframe bias, trend filters, momentum, volume, divergence, exits, risk rules, alerts and visuals. The app explains the exact behavior before generating editable Pine code.
 
-PineForge is not a tiny Pine snippet generator. It starts from complete editable scripts, asks practical trading questions, explains the resulting behavior in plain language, and generates Pine Script v6 from a typed configuration.
+## What changed in v0.2
 
-## Included in this starter
+- Separate generation paths for `long_short`, `long_only` and `spot_buy_exit`
+- Spot mode produces real BUY and EXIT events and never emits short logic
+- Spot state prevents EXIT labels before a BUY and duplicate BUY labels while active
+- Closed higher-timeframe bias mode uses the last confirmed HTF candle
+- Confirmed-candle input now actually controls signal confirmation
+- Event-based entry triggers: EMA cross, EMA reclaim, VWAP reclaim, Supertrend flip and breakout
+- Preset selection is visibly highlighted
+- Common timeframes, lengths, thresholds, multipliers and risk settings are dropdown choices
+- Mode-specific controls hide irrelevant values
+- Dashboard content changes for spot, long-only and long/short modes
+- Generated explanation matches the selected logic
 
-- Guided strategy builder
-- 10 editable full-script presets
-- Long/short, long-only and spot buy/exit modes
-- Indicator and Strategy Tester output
-- Higher-timeframe bias with counter-trend blocking
-- EMA, SMA/EMA long MA, VWAP and Supertrend filters
-- RSI, MACD, ADX, volume and pivot-confirmed RSI divergence
-- Candle-close confirmation and signal cooldown
-- ATR, percentage and swing stops
-- Risk/reward, percentage and opposite-signal exits
-- Alerts, labels, bias background and dashboard
-- Plain-language behavior summary before code generation
-- Deterministic Pine Script v6 compiler
-- Optional BYOK AI planning endpoint for Gemini or OpenAI
+## Run in GitHub Codespaces
 
-## Run locally
+Place the project files in the root of your `PineScript-coder` Codespace, then run:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open the forwarded port shown in the **Ports** panel.
 
 ## Optional AI planner
 
-The deterministic builder does not need AI. To enable the optional request interpreter:
+The guided builder works without AI. The optional planner uses the user's own provider key and should only convert plain language into the same visible deterministic configuration. Review the form before generating Pine code.
 
-```bash
-cp .env.example .env.local
-```
-
-Then set one provider:
+Copy `.env.example` to `.env.local` and add one provider key:
 
 ```env
 AI_PROVIDER=gemini
 GEMINI_API_KEY=your_key
-GEMINI_MODEL=gemini-2.5-flash
 ```
 
 or:
@@ -51,41 +43,14 @@ or:
 ```env
 AI_PROVIDER=openai
 OPENAI_API_KEY=your_key
-OPENAI_MODEL=gpt-4.1-mini
 ```
 
-Keep keys in deployment environment variables. Never commit `.env.local`.
+Never commit `.env.local`.
 
-## Deploy your own fork
+## Important
 
-1. Fork the repository.
-2. Import the fork into Vercel.
-3. Add optional AI environment variables in Vercel Project Settings.
-4. Deploy.
+Generated scripts are rule implementations, not profitability guarantees. Compile, inspect and backtest every result in TradingView before real use.
 
-The guided builder remains fully operational without an API key.
+## License
 
-## Architecture
-
-- `lib/types.ts` — typed strategy specification
-- `lib/presets.ts` — complete editable script presets
-- `lib/explain.ts` — plain-language behavior explanation
-- `lib/compiler.ts` — deterministic Pine Script v6 code generator
-- `app/api/ai-plan` — optional AI plan endpoint
-- `app/page.tsx` — guided UI
-
-## Current boundary
-
-The project generates broad, editable Pine v6 scripts, but it is not TradingView's compiler. Generated code must be pasted into TradingView and tested. PineForge does not promise profitability and should not be used as the sole basis for financial decisions.
-
-## Next engineering priorities
-
-- A formal expression tree for nested AND/OR groups
-- Multiple entries and partial exits
-- Break-even and trailing logic
-- Sessions, daily limits and position sizing
-- Import/export strategy JSON
-- Pine static validation rules
-- More visual modules: boxes, zones, lines and configurable tables
-- Community module registry
-- Automated fixtures for every preset and feature combination
+MIT

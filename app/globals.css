@@ -37,3 +37,8 @@ pre { background:#070a0f; border:1px solid var(--line); border-radius:13px; padd
 .ai-panel textarea { min-height:180px; margin:14px 0; resize:vertical; }
 code { color:#b9d3ff; }
 @media (max-width:900px) { main{padding:18px}.hero{display:block}.hero-actions{margin-top:18px}.workspace{grid-template-columns:1fr}.sticky{position:static}.two,.three{grid-template-columns:1fr}.preset-grid{grid-template-columns:1fr}.tabs{overflow:auto}.code-head{align-items:flex-start;flex-direction:column} }
+.selected-strip { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:12px 14px; border:1px solid #36537e; background:#101d31; border-radius:12px; margin-bottom:18px; color:var(--muted); }
+.selected-strip strong { color:var(--text); }
+.selected-strip span:last-child { margin-left:auto; text-transform:uppercase; font-size:12px; letter-spacing:.08em; }
+.preset-grid button.selected { border-color:var(--accent2); background:#173129; box-shadow:0 0 0 1px rgba(145,242,195,.18) inset; }
+.summary-badge { display:inline-flex; padding:7px 10px; border-radius:999px; background:#1b2a41; border:1px solid #355077; color:#dce9ff; font-size:12px; font-weight:700; margin-bottom:8px; }

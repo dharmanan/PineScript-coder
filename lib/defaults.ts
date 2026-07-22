@@ -7,13 +7,16 @@ export const defaultConfig: StrategyConfig = {
   outputMode: "indicator",
   chartTimeframe: "15",
   sensitivity: "balanced",
+  entryTrigger: "pullback_reclaim",
+  spotExitMode: "combined",
   confirmedBarsOnly: true,
   higherTimeframe: {
     enabled: true,
     timeframe: "240",
     method: "ema",
     length: 100,
-    blockCounterTrend: true
+    blockCounterTrend: true,
+    closedBarOnly: true
   },
   trend: {
     emaEnabled: true,
@@ -25,13 +28,15 @@ export const defaultConfig: StrategyConfig = {
     vwapEnabled: true,
     supertrendEnabled: false,
     supertrendAtrLength: 10,
-    supertrendFactor: 3
+    supertrendFactor: 3,
+    breakoutLength: 20
   },
   momentum: {
     rsiEnabled: true,
     rsiLength: 14,
     rsiLong: 55,
     rsiShort: 45,
+    rsiExit: 65,
     macdEnabled: false,
     adxEnabled: false,
     adxLength: 14,
@@ -49,6 +54,7 @@ export const defaultConfig: StrategyConfig = {
     atrLength: 14,
     atrMultiple: 2,
     stopPercent: 1.5,
+    swingLength: 10,
     takeProfitMode: "risk_reward",
     riskReward: 2,
     takeProfitPercent: 3,
