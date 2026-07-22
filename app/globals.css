@@ -7,7 +7,7 @@ button:hover { border-color:#49648f; }
 button.primary { background:linear-gradient(135deg,#3977e8,#6458df); border-color:transparent; font-weight:700; }
 button.wide { width:100%; margin-top:18px; }
 main { max-width:1460px; margin:0 auto; padding:34px; }
-.hero { display:flex; justify-content:space-between; gap:24px; align-items:end; padding:28px 0 25px; }
+.hero { display:flex; justify-content:space-between; gap:24px; align-items:flex-end; padding:28px 0 25px; }
 h1 { font-size:clamp(42px,7vw,82px); line-height:.95; margin:8px 0 14px; letter-spacing:-.055em; }
 h2 { margin:6px 0 16px; font-size:26px; }
 h3 { margin:0 0 14px; font-size:16px; }
