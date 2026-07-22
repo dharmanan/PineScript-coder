@@ -65,6 +65,7 @@ export const defaultConfig: StrategyConfig = {
     cooldownBars: 5,
     sessionEnabled: false,
     session: "0900-1700",
+    sessionTimezone: "exchange",
     alertsEnabled: true,
     webhookEnabled: true,
     showDashboard: true,
