@@ -1,1 +1,1 @@
-export { compilePine } from "./compiler-v6";
+export { compilePine } from "./compiler-v7";
