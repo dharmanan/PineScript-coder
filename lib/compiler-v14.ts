@@ -6,28 +6,29 @@ const appendForceOverlay = (line: string): string => {
   return `${line.slice(0, -1)}, force_overlay=true)`;
 };
 
-const rsiPanePresetNames = new Set([
-  "Balanced Intraday",
-  "Fast EMA Scalper",
-  "VWAP Session Trader",
-  "4H Swing Trend",
-  "RSI Divergence Reversal",
-  "Spot Accumulation",
-  "Breakout Momentum",
-  "Selective Multi-Timeframe",
-  "Long-Term Trend Guard"
+const rsiPanePresetIds = new Set<NonNullable<StrategyConfig["presetId"]>>([
+  "balanced_intraday",
+  "fast_ema_scalper",
+  "vwap_session_trader",
+  "swing_trend_4h",
+  "rsi_divergence_reversal",
+  "spot_accumulation",
+  "breakout_momentum",
+  "selective_multi_timeframe",
+  "long_term_trend_guard"
 ]);
 
 export function compilePine(config: StrategyConfig): string {
   let code = compileBase(config);
   const useIntegratedRsiPane =
     config.outputMode === "indicator" &&
-    rsiPanePresetNames.has(config.name) &&
+    config.presetId !== undefined &&
+    rsiPanePresetIds.has(config.presetId) &&
     (config.momentum.rsiEnabled || config.momentum.divergenceEnabled);
 
   if (!useIntegratedRsiPane) return code;
 
-  const showHiddenByDefault = config.name === "4H Swing Trend";
+  const showHiddenByDefault = config.presetId === "swing_trend_4h";
   const declaration = `indicator("${config.name}", overlay=true, max_labels_count=500, max_lines_count=500)`;
   const paneDeclaration = `indicator("${config.name}", overlay=false, max_labels_count=500, max_lines_count=500)`;
   if (!code.includes(declaration)) {
