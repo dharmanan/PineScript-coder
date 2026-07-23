@@ -98,14 +98,16 @@ describe("Regime Trend v1 5m intrabar replay", () => {
         activeStop: updatedStop
       }
     ];
-    const candles = map([
-      candle(0, { low: 95 }),
-      candle(FOUR_HOURS, { low: 98, high: 102 })
-    ]);
+    const path = [];
+    for (let timestamp = 0; timestamp < FOUR_HOURS; timestamp += FIVE) {
+      path.push(candle(timestamp, { low: 95 }));
+    }
+    path.push(candle(FOUR_HOURS, { low: 98, high: 102 }));
+
     const result = replayTrade5m(
       trade({ exit_timestamp: FOUR_HOURS + FIVE }),
       stopUpdates,
-      candles,
+      map(path),
       2
     );
     expect(result.classification).toBe("STOP_FIRST");
