@@ -9,11 +9,7 @@ export type Candle = {
   volume: number;
 };
 
-export type ExitReason =
-  | "initial_stop"
-  | "trailing_stop"
-  | "trend_exit"
-  | "immediate_entry_stop";
+export type ExitReason = "initial_stop" | "trailing_stop" | "trend_exit";
 
 export type SignalRecord = {
   signalIndex: number;
@@ -32,7 +28,7 @@ export type StopUpdate = {
 
 export type TradeLedger = {
   strategy_id: "regime-trend-v1";
-  implementation_version: "typescript-reference-v1";
+  implementation_version: "typescript-reference-v1.0.1";
   dataset_hash: string;
   symbol: string;
   timeframe: "4h";
@@ -54,7 +50,6 @@ export type TradeLedger = {
   net_pnl: number;
   net_return: number;
   bars_held: number;
-  immediate_entry_stop_flag: boolean;
 };
 
 export type OpenPosition = {
@@ -161,6 +156,10 @@ function highestPreviousHigh(candles: Candle[], index: number): number | undefin
   return highest;
 }
 
+function stopReason(position: OpenPosition): ExitReason {
+  return position.trailingActivated ? "trailing_stop" : "initial_stop";
+}
+
 function closeTrade(args: {
   position: OpenPosition;
   exitIndex: number;
@@ -179,7 +178,7 @@ function closeTrade(args: {
 
   return {
     strategy_id: "regime-trend-v1",
-    implementation_version: "typescript-reference-v1",
+    implementation_version: "typescript-reference-v1.0.1",
     dataset_hash: datasetHash,
     symbol,
     timeframe: "4h",
@@ -200,8 +199,7 @@ function closeTrade(args: {
     gross_pnl: grossPnl,
     net_pnl: netPnl,
     net_return: netPnl / entryNotional,
-    bars_held: exitIndex - position.entryIndex,
-    immediate_entry_stop_flag: exitReason === "immediate_entry_stop"
+    bars_held: exitIndex - position.entryIndex
   };
 }
 
@@ -224,6 +222,29 @@ export function runRegimeTrendV1(
   let position: OpenPosition | null = null;
   let pendingEntry: SignalRecord | null = null;
   let pendingTrendExit = false;
+
+  const recordExit = (
+    exitIndex: number,
+    rawExitReference: number,
+    exitFill: number,
+    exitReason: ExitReason
+  ): void => {
+    if (!position) throw new Error("Cannot close a missing position");
+    trades.push(
+      closeTrade({
+        position,
+        exitIndex,
+        exitTimestamp: candles[exitIndex].timestamp,
+        rawExitReference,
+        exitFill,
+        exitReason,
+        datasetHash,
+        symbol
+      })
+    );
+    position = null;
+    pendingTrendExit = false;
+  };
 
   for (let index = 0; index < candles.length; index += 1) {
     const candle = candles[index];
@@ -250,82 +271,26 @@ export function runRegimeTrendV1(
         trailingActivated: false
       };
       pendingEntry = null;
+    }
 
-      if (candle.open <= initialStop) {
-        const exitFill = candle.open * (1 - SLIPPAGE);
-        trades.push(
-          closeTrade({
-            position,
-            exitIndex: index,
-            exitTimestamp: candle.timestamp,
-            rawExitReference: candle.open,
-            exitFill,
-            exitReason: "immediate_entry_stop",
-            datasetHash,
-            symbol
-          })
-        );
-        position = null;
-        exitedThisBar = true;
+    if (position && pendingTrendExit) {
+      if (candle.open <= position.activeStop) {
+        recordExit(index, candle.open, candle.open * (1 - SLIPPAGE), stopReason(position));
+      } else {
+        recordExit(index, candle.open, candle.open * (1 - SLIPPAGE), "trend_exit");
       }
+      exitedThisBar = true;
     }
 
     if (position && !exitedThisBar) {
       const stop = position.activeStop;
       if (candle.open <= stop) {
-        const exitFill = candle.open * (1 - SLIPPAGE);
-        trades.push(
-          closeTrade({
-            position,
-            exitIndex: index,
-            exitTimestamp: candle.timestamp,
-            rawExitReference: candle.open,
-            exitFill,
-            exitReason: position.trailingActivated ? "trailing_stop" : "initial_stop",
-            datasetHash,
-            symbol
-          })
-        );
-        position = null;
-        pendingTrendExit = false;
+        recordExit(index, candle.open, candle.open * (1 - SLIPPAGE), stopReason(position));
         exitedThisBar = true;
       } else if (candle.low <= stop) {
-        const exitFill = stop * (1 - SLIPPAGE);
-        trades.push(
-          closeTrade({
-            position,
-            exitIndex: index,
-            exitTimestamp: candle.timestamp,
-            rawExitReference: stop,
-            exitFill,
-            exitReason: position.trailingActivated ? "trailing_stop" : "initial_stop",
-            datasetHash,
-            symbol
-          })
-        );
-        position = null;
-        pendingTrendExit = false;
+        recordExit(index, stop, stop * (1 - SLIPPAGE), stopReason(position));
         exitedThisBar = true;
       }
-    }
-
-    if (position && pendingTrendExit && !exitedThisBar) {
-      const exitFill = candle.open * (1 - SLIPPAGE);
-      trades.push(
-        closeTrade({
-          position,
-          exitIndex: index,
-          exitTimestamp: candle.timestamp,
-          rawExitReference: candle.open,
-          exitFill,
-          exitReason: "trend_exit",
-          datasetHash,
-          symbol
-        })
-      );
-      position = null;
-      pendingTrendExit = false;
-      exitedThisBar = true;
     }
 
     if (position && !exitedThisBar) {
@@ -337,13 +302,7 @@ export function runRegimeTrendV1(
         const activeStop = Math.max(previousStop, candidateStop);
         if (activeStop > previousStop) position.trailingActivated = true;
         position.activeStop = activeStop;
-        stopUpdates.push({
-          index,
-          timestamp: candle.timestamp,
-          previousStop,
-          candidateStop,
-          activeStop
-        });
+        stopUpdates.push({ index, timestamp: candle.timestamp, previousStop, candidateStop, activeStop });
       }
 
       const fast = ema50[index];
