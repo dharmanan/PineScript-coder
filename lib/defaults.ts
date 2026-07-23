@@ -2,6 +2,7 @@ import type { StrategyConfig } from "./types";
 
 export const defaultConfig: StrategyConfig = {
   name: "PineForge Indicator",
+  presetId: "custom",
   style: "intraday",
   direction: "long_short",
   outputMode: "indicator",
