@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { aggregate5mTo15m, splitContiguous, summarize } from "./reference-engine.mjs";
+import { aggregate5mTo15m, summarize } from "./reference-engine.mjs";
 import {
   BENCHMARK_CANDIDATES,
   aggregate15m,
@@ -16,6 +16,7 @@ const csvDirectory = join(sourceDirectory, "csv");
 const manifestPath = join(sourceDirectory, "five-minute-manifest.json");
 const resultDirectory = join(directory, "results");
 const HOLDOUT = Date.parse("2025-01-01T00:00:00.000Z");
+const FIFTEEN_MS = 15 * 60 * 1000;
 const DEVELOPMENT = { start: Date.parse("2019-01-01T00:00:00.000Z"), end: Date.parse("2023-01-01T00:00:00.000Z") };
 const VALIDATION = { start: Date.parse("2023-01-01T00:00:00.000Z"), end: HOLDOUT };
 const TIMEFRAMES = Object.freeze([
@@ -41,11 +42,26 @@ async function loadSymbol(symbol, manifest) {
   return aggregate5mTo15m(five);
 }
 
-function segments(candles, window, warmup = 500) {
+export function splitContiguousByInterval(candles, intervalMs) {
+  if (!Number.isFinite(intervalMs) || intervalMs <= 0) throw new Error("Invalid contiguous interval");
+  if (!candles.length) return [];
+  const output = [[candles[0]]];
+  for (let index = 1; index < candles.length; index += 1) {
+    if (candles[index].timestamp - candles[index - 1].timestamp === intervalMs) {
+      output.at(-1).push(candles[index]);
+    } else {
+      output.push([candles[index]]);
+    }
+  }
+  return output;
+}
+
+function segments(candles, window, intervalMs, warmup = 500) {
   const first = candles.findIndex((item) => item.timestamp >= window.start);
   if (first < 0) return [];
   const selected = candles.slice(Math.max(0, first - warmup)).filter((item) => item.timestamp < window.end);
-  return splitContiguous(selected).filter((segment) => segment.some((item) => item.timestamp >= window.start));
+  return splitContiguousByInterval(selected, intervalMs)
+    .filter((segment) => segment.some((item) => item.timestamp >= window.start));
 }
 
 function merge(trades) {
@@ -105,10 +121,18 @@ async function main() {
     const base = await loadSymbol(symbol, manifest);
     for (const timeframe of TIMEFRAMES) {
       const candles = aggregate15m(base, timeframe.factor);
-      const developmentContexts = segments(candles, DEVELOPMENT).map((part) => ({ symbol, candles: part, features: prepareBenchmarkFeatures(part) }));
-      const validationContexts = segments(candles, VALIDATION).map((part) => ({ symbol, candles: part, features: prepareBenchmarkFeatures(part) }));
+      const intervalMs = FIFTEEN_MS * timeframe.factor;
+      const developmentContexts = segments(candles, DEVELOPMENT, intervalMs)
+        .map((part) => ({ symbol, candles: part, features: prepareBenchmarkFeatures(part) }));
+      const validationContexts = segments(candles, VALIDATION, intervalMs)
+        .map((part) => ({ symbol, candles: part, features: prepareBenchmarkFeatures(part) }));
+      const developmentBars = developmentContexts.reduce((sum, context) => sum + context.candles.length, 0);
+      const validationBars = validationContexts.reduce((sum, context) => sum + context.candles.length, 0);
+      if (developmentBars < 500 || validationBars < 200) {
+        throw new Error(`Insufficient contiguous data for ${symbol} ${timeframe.id}: development=${developmentBars}, validation=${validationBars}`);
+      }
       markets.push({ symbol, timeframe: timeframe.id, developmentContexts, validationContexts });
-      console.log(`${symbol} ${timeframe.id}: ${candles.length} complete candles`);
+      console.log(`${symbol} ${timeframe.id}: ${candles.length} complete candles, development segments=${developmentContexts.length}, validation segments=${validationContexts.length}`);
     }
   }
 
@@ -119,6 +143,10 @@ async function main() {
       const development = evaluate(market.developmentContexts, candidate, DEVELOPMENT, NORMAL);
       return { candidate, development, score: score(development.metrics) };
     }).sort((a, b) => b.score - a.score);
+
+    if (ranking.every((item) => item.development.metrics.closed_trades === 0)) {
+      throw new Error(`Invalid benchmark: every candidate produced zero development trades for ${market.symbol} ${market.timeframe}`);
+    }
 
     const finalists = ranking.slice(0, 5).map((item) => {
       const validation = evaluate(market.validationContexts, item.candidate, VALIDATION, NORMAL);
@@ -152,8 +180,8 @@ async function main() {
 
   const acceptedProfiles = reports.filter((item) => item.accepted_profile);
   const report = {
-    schema_version: 1,
-    study_id: "rsi-divergence-public-benchmarks-v1",
+    schema_version: 2,
+    study_id: "rsi-divergence-public-benchmarks-v2",
     source: "independent implementations of publicly described RSI divergence strategy families",
     candidate_count_per_market: BENCHMARK_CANDIDATES.length,
     markets_tested: reports.length,
