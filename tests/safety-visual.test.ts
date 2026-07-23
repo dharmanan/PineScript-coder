@@ -81,6 +81,24 @@ describe("indicator risk lifecycle", () => {
   });
 });
 
+describe("signal label context", () => {
+  it("prints the confirmed close price in long and short labels", () => {
+    const longOnly = clone(defaultConfig);
+    longOnly.direction = "long_only";
+    const longCode = compilePine(longOnly);
+
+    const longShort = clone(defaultConfig);
+    longShort.direction = "long_short";
+    const longShortCode = compilePine(longShort);
+
+    expect(longCode).toContain('"LONG\\n" + str.tostring(close, format.mintick)');
+    expect(longShortCode).toContain('"LONG\\n" + str.tostring(close, format.mintick)');
+    expect(longShortCode).toContain('"SHORT\\n" + str.tostring(close, format.mintick)');
+    expect(longCode).not.toContain('plotshape(longSignal, title="Long"');
+    expect(longShortCode).not.toContain('plotshape(shortSignal, title="Short"');
+  });
+});
+
 describe("visual plan isolation", () => {
   it("changes visuals without changing the configured entry trigger", () => {
     const clean = clone(defaultConfig);
@@ -125,5 +143,17 @@ describe("visual plan isolation", () => {
     expect(advancedCode).toContain("color.new(color.red, 95)");
     expect(cleanCode).toContain("colorSignalBars = input.bool(false");
     expect(cleanCode).toContain("showTrendRibbon = input.bool(false");
+  });
+
+  it("keeps the legacy HTF background profile-aware and nearly transparent", () => {
+    const advanced = clone(defaultConfig);
+    advanced.visual.profile = "advanced";
+    advanced.visual.showTrendRibbon = true;
+    advanced.execution.showBackground = true;
+    advanced.higherTimeframe.enabled = true;
+    const code = compilePine(advanced);
+
+    expect(code).toContain('bgcolor(showTrendRibbon and visualProfile != "Clean" ? (htfBull ? color.new(color.green, 99) : color.new(color.red, 99)) : na, title="HTF bias")');
+    expect(code).not.toContain('bgcolor(htfBull ? color.new(color.green, 92) : color.new(color.red, 92), title="HTF bias")');
   });
 });
