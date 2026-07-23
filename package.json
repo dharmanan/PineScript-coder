@@ -24,7 +24,8 @@
     "research:rsi-divergence": "node research/rsi-divergence-reversal/run-research.mjs",
     "research:rsi-divergence-improve": "node research/rsi-divergence-reversal/run-improvement-study.mjs",
     "research:rsi-divergence-phase2": "node research/rsi-divergence-reversal/run-phase2-study.mjs",
-    "research:rsi-divergence-phase3": "node research/rsi-divergence-reversal/run-phase3-study.mjs"
+    "research:rsi-divergence-phase3": "node research/rsi-divergence-reversal/run-phase3-study.mjs",
+    "research:rsi-divergence-benchmarks": "node research/rsi-divergence-reversal/run-public-benchmark-study.mjs"
   },
   "dependencies": {
     "next": "^15.5.21",
