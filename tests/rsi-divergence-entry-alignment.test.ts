@@ -1,9 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { compilePine } from "../lib/compiler";
 import { presets } from "../lib/presets";
+import type { StrategyConfig } from "../lib/types";
 import { legacyRsiConfig } from "./helpers/legacy-rsi-config";
 
+const rsiPanePresetNames = [
+  "Balanced Intraday",
+  "Fast EMA Scalper",
+  "VWAP Session Trader",
+  "4H Swing Trend",
+  "Spot Accumulation",
+  "Breakout Momentum",
+  "RSI Divergence Reversal",
+  "Selective Multi-Timeframe",
+  "Long-Term Trend Guard"
+] as const;
+
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+
+const findPreset = (name: string): StrategyConfig => {
+  const preset = presets.find((item) => item.name === name);
+  expect(preset, `Missing preset: ${name}`).toBeDefined();
+  return clone(preset!);
+};
 
 describe("RSI divergence entry alignment", () => {
   it("uses the same regular divergence events for pane labels and entries in the generic compiler", () => {
@@ -19,18 +38,24 @@ describe("RSI divergence entry alignment", () => {
     );
   });
 
-  it("aligns any supported indicator configuration when divergence is enabled", () => {
-    const preset = presets.find((item) => item.name === "Balanced Intraday");
-    expect(preset).toBeDefined();
+  for (const name of rsiPanePresetNames) {
+    it(`aligns panel and entry divergence for ${name}`, () => {
+      const config = findPreset(name);
+      config.outputMode = "indicator";
+      config.momentum.divergenceEnabled = true;
 
-    const config = clone(preset!);
-    config.outputMode = "indicator";
-    config.momentum.divergenceEnabled = true;
-    const code = compilePine(config);
+      const code = compilePine(config);
 
-    expect(code).toContain("bullishDivergence = divRegularBullAlert");
-    expect(code).toContain("bearishDivergence = divRegularBearAlert");
-  });
+      expect(code).toContain("// === Integrated RSI divergence pane ===");
+      expect(code).toContain("// === Entry divergence aliases ===");
+      expect(code).toContain("bullishDivergence = divRegularBullAlert");
+      expect(code).toContain("bearishDivergence = divRegularBearAlert");
+      expect(code).not.toContain("// Confirmed pivot-based RSI divergence. Pivots appear after right-side bars complete.");
+      expect(code.indexOf("// === Integrated RSI divergence pane ===")).toBeLessThan(
+        code.indexOf("// === Filters and triggers ===")
+      );
+    });
+  }
 
   it("keeps the generic strategy output separate from the integrated indicator pane", () => {
     const code = compilePine(legacyRsiConfig("strategy"));
