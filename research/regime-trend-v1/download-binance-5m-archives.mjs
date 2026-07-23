@@ -96,6 +96,12 @@ async function extractAndValidate(symbol, month, zipPath) {
       before: new Date(gap.before).toISOString(),
       missing_intervals: gap.missing_intervals
     })),
+    preopen_closes: validation.preopen_closes.map((item) => ({
+      open_time: new Date(item.open_time).toISOString(),
+      close_time: new Date(item.close_time).toISOString(),
+      expected_close_time: new Date(item.expected_close_time).toISOString(),
+      precedes_open_by_ms: item.precedes_open_by_ms
+    })),
     shortened_closes: validation.shortened_closes.map((item) => ({
       open_time: new Date(item.open_time).toISOString(),
       close_time: new Date(item.close_time).toISOString(),
@@ -132,13 +138,14 @@ async function main() {
       console.log(
         `${label}: rows=${entry.row_count}, missing=${entry.missing_interval_count}, ` +
         `irregular_close=${entry.irregular_close_count} ` +
-        `(shortened=${entry.shortened_close_count}, extended=${entry.extended_close_count})`
+        `(preopen=${entry.preopen_close_count}, shortened=${entry.shortened_close_count}, ` +
+        `extended=${entry.extended_close_count})`
       );
     }
   }
 
   const manifest = {
-    schema_version: 2,
+    schema_version: 3,
     strategy_id: "regime-trend-v1",
     source: "Binance public data monthly spot klines",
     source_base: "https://data.binance.vision/data/spot/monthly/klines",
@@ -149,7 +156,8 @@ async function main() {
     final_holdout_opened: false,
     symbols: FIVE_MINUTE_SYMBOLS,
     months,
-    close_time_policy: "record shortened or extended close_time anomalies; replay ordering uses open_time and OHLC",
+    close_time_policy:
+      "record pre-open, shortened, or extended close_time anomalies; replay ordering uses open_time and OHLC",
     files
   };
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
