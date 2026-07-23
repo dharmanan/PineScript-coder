@@ -39,6 +39,22 @@ describe("RSI pane preset coverage", () => {
     });
   }
 
+  it("uses the configured RSI length and divergence pivot strength", () => {
+    const config = findPreset("Balanced Intraday");
+    config.outputMode = "indicator";
+    config.momentum.rsiLength = 21;
+    config.momentum.divergencePivot = 7;
+
+    const code = compilePine(config);
+
+    expect(code).toContain('divRsiLength = input.int(21, "Divergence RSI period"');
+    expect(code).toContain('divPivotLeft = input.int(7, "Divergence pivot left"');
+    expect(code).toContain('divPivotRight = input.int(7, "Divergence pivot right"');
+    expect(code).not.toContain('divRsiLength = input.int(14, "Divergence RSI period"');
+    expect(code).not.toContain('divPivotLeft = input.int(5, "Divergence pivot left"');
+    expect(code).not.toContain('divPivotRight = input.int(5, "Divergence pivot right"');
+  });
+
   it("keeps Supertrend Volume panel-free while RSI and divergence are disabled", () => {
     const config = findPreset("Supertrend Volume");
     config.outputMode = "indicator";
