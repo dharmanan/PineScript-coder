@@ -100,6 +100,7 @@ export function validateArchiveCandles(candles, month) {
   const { start, endExclusive } = monthBounds(month);
   const gaps = [];
   const shortenedCloses = [];
+  const extendedCloses = [];
   let missingIntervalCount = 0;
 
   for (let index = 0; index < candles.length; index += 1) {
@@ -120,18 +121,27 @@ export function validateArchiveCandles(candles, month) {
     ) {
       throw new Error(`Invalid 5m OHLC bounds at ${candle.timestamp}`);
     }
+
     const expectedClose = candle.timestamp + FIVE_MINUTES_MS - 1;
-    if (candle.closeTime < candle.timestamp || candle.closeTime > expectedClose) {
-      throw new Error(`Invalid 5m close time at ${candle.timestamp}`);
+    if (candle.closeTime < candle.timestamp) {
+      throw new Error(`5m close time precedes open time at ${candle.timestamp}`);
     }
-    if (candle.closeTime !== expectedClose) {
+    if (candle.closeTime < expectedClose) {
       shortenedCloses.push({
         open_time: candle.timestamp,
         close_time: candle.closeTime,
         expected_close_time: expectedClose,
         shortened_by_ms: expectedClose - candle.closeTime
       });
+    } else if (candle.closeTime > expectedClose) {
+      extendedCloses.push({
+        open_time: candle.timestamp,
+        close_time: candle.closeTime,
+        expected_close_time: expectedClose,
+        extended_by_ms: candle.closeTime - expectedClose
+      });
     }
+
     if (index > 0) {
       const previous = candles[index - 1];
       const delta = candle.timestamp - previous.timestamp;
@@ -159,8 +169,11 @@ export function validateArchiveCandles(candles, month) {
     missing_interval_count: missingIntervalCount,
     leading_missing_intervals: leadingMissing,
     trailing_missing_intervals: trailingMissing,
+    irregular_close_count: shortenedCloses.length + extendedCloses.length,
     shortened_close_count: shortenedCloses.length,
+    extended_close_count: extendedCloses.length,
     gaps,
-    shortened_closes: shortenedCloses
+    shortened_closes: shortenedCloses,
+    extended_closes: extendedCloses
   };
 }
