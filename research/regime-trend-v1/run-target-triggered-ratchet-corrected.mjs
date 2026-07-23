@@ -21,10 +21,15 @@ const data5mDirectory = join(scriptDirectory, "data-5m");
 const data5mCsvDirectory = join(data5mDirectory, "csv");
 const outputDirectory = join(scriptDirectory, "results");
 const HOLDOUT_START_MS = Date.parse("2025-01-01T00:00:00.000Z");
+const DIAGNOSTIC_CANDIDATE_ID = "touch-2.00-lock-0.00";
 
 function quarterId(timestamp) {
   const date = new Date(timestamp);
   return `${date.getUTCFullYear()}-Q${Math.floor(date.getUTCMonth() / 3) + 1}`;
+}
+
+function isoTimestamp(timestamp) {
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
 }
 
 async function loadFiveMinuteMap(symbol, manifest) {
@@ -87,6 +92,50 @@ function grouped(rows, keyFn, costs) {
   );
 }
 
+function unresolvedDiagnostics(rows, candidate, costs) {
+  const diagnostics = [];
+  for (const row of rows) {
+    const comparison = compareTradeWithRatchet5m(
+      row.trade,
+      row.stopUpdates,
+      row.candleByTimestamp,
+      candidate,
+      costs
+    );
+    if (comparison.classification !== "DATA_GAP" && comparison.classification !== "DATA_MISMATCH") {
+      continue;
+    }
+
+    const baselineIssueTimestamp = comparison.baseline?.timestamp;
+    const overlayIssueTimestamp = comparison.overlay?.timestamp;
+    const missingTimestamp =
+      comparison.baseline?.status === "DATA_GAP"
+        ? baselineIssueTimestamp
+        : comparison.overlay?.status === "DATA_GAP"
+          ? overlayIssueTimestamp
+          : null;
+
+    diagnostics.push({
+      symbol: row.symbol,
+      quarter: row.quarter,
+      classification: comparison.classification,
+      entry_timestamp: isoTimestamp(row.trade.entry_timestamp),
+      original_exit_timestamp: isoTimestamp(row.trade.exit_timestamp),
+      original_exit_reason: row.trade.exit_reason,
+      missing_5m_timestamp: isoTimestamp(missingTimestamp),
+      baseline_status: comparison.baseline?.status ?? null,
+      baseline_issue_timestamp: isoTimestamp(baselineIssueTimestamp),
+      baseline_active_stop: comparison.baseline?.activeStop ?? null,
+      overlay_status: comparison.overlay?.status ?? null,
+      overlay_issue_timestamp: isoTimestamp(overlayIssueTimestamp),
+      overlay_original_stop: comparison.overlay?.originalStop ?? null,
+      overlay_ratchet_floor: comparison.overlay?.ratchetFloor ?? null,
+      overlay_activated: comparison.overlay?.activated ?? false
+    });
+  }
+  return diagnostics;
+}
+
 async function collectRows(manifest4h, manifest5m, parameters, implementationVersion) {
   const rowsByPartition = Object.fromEntries(
     RESEARCH_PARTITIONS.map((partition) => [partition.id, []])
@@ -140,26 +189,36 @@ async function main() {
     throw new Error("5m holdout boundary mismatch");
   }
 
+  const normalCosts = { commission: 0.001, slippage: 0.0005 };
+  const doubledCosts = { commission: 0.002, slippage: 0.001 };
+  const diagnosticCandidate = TARGET_TRIGGERED_RATCHET_CANDIDATES.find(
+    (candidate) => candidate.id === DIAGNOSTIC_CANDIDATE_ID
+  );
+  if (!diagnosticCandidate) {
+    throw new Error(`Missing diagnostic candidate: ${DIAGNOSTIC_CANDIDATE_ID}`);
+  }
+
   const normalRows = await collectRows(
     manifest4h,
     manifest5m,
-    { commission: 0.001, slippage: 0.0005 },
+    normalCosts,
     "typescript-reference-v1.1.0-5m-ratchet-corrected-normal"
   );
   const doubledRows = await collectRows(
     manifest4h,
     manifest5m,
-    { commission: 0.002, slippage: 0.001 },
+    doubledCosts,
     "typescript-reference-v1.1.0-5m-ratchet-corrected-doubled"
   );
 
   const report = {
-    schema_version: 2,
+    schema_version: 3,
     strategy_id: "regime-trend-v1",
     generated_at: new Date().toISOString(),
     holdout_opened: false,
     comparison: "5m-resolved baseline versus 5m-resolved ratchet",
     candidates: TARGET_TRIGGERED_RATCHET_CANDIDATES,
+    diagnostic_candidate_id: diagnosticCandidate.id,
     partitions: RESEARCH_PARTITIONS.map((partition) => {
       const normal = normalRows[partition.id];
       const doubled = doubledRows[partition.id];
@@ -167,12 +226,16 @@ async function main() {
         id: partition.id,
         normal_trade_count: normal.length,
         doubled_trade_count: doubled.length,
-        normal_costs: summarizeRows(normal, { commission: 0.001, slippage: 0.0005 }),
-        doubled_costs: summarizeRows(doubled, { commission: 0.002, slippage: 0.001 }),
-        by_symbol_normal_costs: grouped(normal, (row) => row.symbol, { commission: 0.001, slippage: 0.0005 }),
-        by_symbol_doubled_costs: grouped(doubled, (row) => row.symbol, { commission: 0.002, slippage: 0.001 }),
-        by_quarter_normal_costs: grouped(normal, (row) => row.quarter, { commission: 0.001, slippage: 0.0005 }),
-        by_quarter_doubled_costs: grouped(doubled, (row) => row.quarter, { commission: 0.002, slippage: 0.001 })
+        normal_costs: summarizeRows(normal, normalCosts),
+        doubled_costs: summarizeRows(doubled, doubledCosts),
+        by_symbol_normal_costs: grouped(normal, (row) => row.symbol, normalCosts),
+        by_symbol_doubled_costs: grouped(doubled, (row) => row.symbol, doubledCosts),
+        by_quarter_normal_costs: grouped(normal, (row) => row.quarter, normalCosts),
+        by_quarter_doubled_costs: grouped(doubled, (row) => row.quarter, doubledCosts),
+        unresolved_diagnostics: {
+          normal_costs: unresolvedDiagnostics(normal, diagnosticCandidate, normalCosts),
+          doubled_costs: unresolvedDiagnostics(doubled, diagnosticCandidate, doubledCosts)
+        }
       };
     })
   };
@@ -197,6 +260,19 @@ async function main() {
         `gap=${normal.data_gap_count}, mismatch=${normal.data_mismatch_count}, ` +
         `doubledNetΔ=${doubled.net_pnl_change.toFixed(6)}`
       );
+    }
+
+    for (const [costProfile, diagnostics] of Object.entries(partition.unresolved_diagnostics)) {
+      console.log(
+        `  unresolved ${diagnosticCandidate.id} ${costProfile}: ${diagnostics.length}`
+      );
+      for (const item of diagnostics) {
+        console.log(
+          `    ${item.classification} ${item.symbol} entry=${item.entry_timestamp} ` +
+          `exit=${item.original_exit_timestamp} reason=${item.original_exit_reason} ` +
+          `missing5m=${item.missing_5m_timestamp}`
+        );
+      }
     }
   }
   console.log(`Report written to ${reportPath}`);
