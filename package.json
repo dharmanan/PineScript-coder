@@ -17,6 +17,7 @@
     "research:exit-timing": "node research/regime-trend-v1/run-exit-timing.mjs",
     "research:profit-protection": "node research/regime-trend-v1/run-profit-protection.mjs",
     "research:5m-data": "node research/regime-trend-v1/download-binance-5m-archives.mjs",
+    "research:5m-repair-gaps": "node research/regime-trend-v1/repair-binance-5m-gaps-from-daily.mjs",
     "research:5m-replay": "node research/regime-trend-v1/run-intrabar-replay.mjs",
     "research:5m-ratchet": "node research/regime-trend-v1/run-target-triggered-ratchet.mjs",
     "research:5m-ratchet-corrected": "node research/regime-trend-v1/run-target-triggered-ratchet-corrected.mjs"
