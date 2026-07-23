@@ -11,7 +11,8 @@ export function compilePine(config: StrategyConfig): string {
   const supportsIntegratedRsiPane =
     config.name === "Fast EMA Scalper" ||
     config.name === "Balanced Intraday" ||
-    config.name === "VWAP Session Trader";
+    config.name === "VWAP Session Trader" ||
+    config.name === "RSI Divergence Reversal";
   const useIntegratedRsiPane = supportsIntegratedRsiPane && config.outputMode === "indicator";
 
   if (!useIntegratedRsiPane) return code;
