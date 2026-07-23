@@ -18,6 +18,12 @@ const rsiPanePresetIds = new Set<NonNullable<StrategyConfig["presetId"]>>([
   "long_term_trend_guard"
 ]);
 
+const hiddenDivergenceDefaultPresetIds = new Set<NonNullable<StrategyConfig["presetId"]>>([
+  "swing_trend_4h",
+  "selective_multi_timeframe",
+  "long_term_trend_guard"
+]);
+
 export function compilePine(config: StrategyConfig): string {
   let code = compileBase(config);
   const useIntegratedRsiPane =
@@ -28,7 +34,8 @@ export function compilePine(config: StrategyConfig): string {
 
   if (!useIntegratedRsiPane) return code;
 
-  const showHiddenByDefault = config.presetId === "swing_trend_4h";
+  const showHiddenByDefault =
+    config.presetId !== undefined && hiddenDivergenceDefaultPresetIds.has(config.presetId);
   const declaration = `indicator("${config.name}", overlay=true, max_labels_count=500, max_lines_count=500)`;
   const paneDeclaration = `indicator("${config.name}", overlay=false, max_labels_count=500, max_lines_count=500)`;
   if (!code.includes(declaration)) {
