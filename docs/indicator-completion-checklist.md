@@ -25,10 +25,10 @@
 - [x] Verify main-chart routing for LONG/SHORT/BUY/EXIT labels, overlays, risk levels and dashboard on all affected presets.
 - [x] Read RSI length and divergence pivot strength from each preset configuration instead of fixed panel defaults.
 - [x] Decouple RSI-pane eligibility from the editable script name.
+- [x] Define and test preset-specific hidden-divergence defaults.
 
 ## Remaining
 
-- [ ] Define and test preset-specific hidden-divergence defaults.
 - [ ] Keep panel and entry divergence aligned whenever Confirmed RSI divergence is enabled.
 - [ ] Compile and visually verify all ten generated indicators in TradingView.
 - [ ] Review RSI Divergence Reversal confirmation quality only after correctness work is complete; do not tune thresholds from isolated screenshots.
