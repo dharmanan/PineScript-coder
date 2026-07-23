@@ -29,7 +29,7 @@ export function compilePine(config: StrategyConfig): string {
   code = replaceRequired(
     code,
     `// === Filters and triggers ===\nconfirmationOk = not confirmedOnly or barstate.isconfirmed`,
-    `// === Filters and triggers ===\nconfirmationOk = not confirmedOnly or barstate.isconfirmed\nchartTimeframeOk = timeframe.period == expectedChartTimeframe\nchartTimeframeAllowed = not enforceChartTimeframe or chartTimeframeOk`
+    `// === Filters and triggers ===\nconfirmationOk = not confirmedOnly or barstate.isconfirmed\nchartTimeframeAliasOk = (timeframe.period == "1D" and expectedChartTimeframe == "D") or (timeframe.period == "D" and expectedChartTimeframe == "1D")\nchartTimeframeOk = timeframe.period == expectedChartTimeframe or chartTimeframeAliasOk\nchartTimeframeAllowed = not enforceChartTimeframe or chartTimeframeOk`
   );
 
   if (isSpot) {
