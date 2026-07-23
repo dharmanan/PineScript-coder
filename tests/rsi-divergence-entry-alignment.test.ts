@@ -1,17 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { compilePine } from "../lib/compiler";
 import { presets } from "../lib/presets";
+import { legacyRsiConfig } from "./helpers/legacy-rsi-config";
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 
 describe("RSI divergence entry alignment", () => {
-  it("uses the same regular divergence events for pane labels and entries", () => {
-    const preset = presets.find((item) => item.name === "RSI Divergence Reversal");
-    expect(preset).toBeDefined();
-
-    const config = clone(preset!);
-    config.outputMode = "indicator";
-    const code = compilePine(config);
+  it("uses the same regular divergence events for pane labels and entries in the generic compiler", () => {
+    const code = compilePine(legacyRsiConfig("indicator"));
 
     expect(code).toContain("bullishDivergence = divRegularBullAlert");
     expect(code).toContain("bearishDivergence = divRegularBearAlert");
@@ -36,13 +32,8 @@ describe("RSI divergence entry alignment", () => {
     expect(code).toContain("bearishDivergence = divRegularBearAlert");
   });
 
-  it("does not change the strategy output path", () => {
-    const preset = presets.find((item) => item.name === "RSI Divergence Reversal");
-    expect(preset).toBeDefined();
-
-    const config = clone(preset!);
-    config.outputMode = "strategy";
-    const code = compilePine(config);
+  it("keeps the generic strategy output separate from the integrated indicator pane", () => {
+    const code = compilePine(legacyRsiConfig("strategy"));
 
     expect(code).toContain("bullishDivergence =");
     expect(code).not.toContain("// === Integrated RSI divergence pane ===");
