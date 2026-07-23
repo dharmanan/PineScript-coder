@@ -10,7 +10,25 @@ const styleLabels: Record<StrategyConfig["style"], string> = {
   long_term: "long-term trend following"
 };
 
+const VALIDATED_BNB_PROFILE = "bnb_30m_ema_confirmed_regular_divergence_v1";
+
 export function explainConfig(c: StrategyConfig): string[] {
+  if (c.researchProfile === VALIDATED_BNB_PROFILE) {
+    const lines = [
+      "This validated research profile is restricted to BINANCE:BNBUSDT on a 30-minute chart; signals are blocked on another symbol or timeframe.",
+      "A confirmed regular RSI divergence arms one direction for up to 30 bars, and an entry requires the matching EMA 9 / WMA 45 crossover before that window expires.",
+      "Long entries also require EMA 50 above EMA 200 with price above EMA 200; short entries require the opposite trend state.",
+      "Volume must be at least 0.8 times its 20-bar average, and signals finalize only after the chart candle closes.",
+      "Risk uses a 15-bar swing stop frozen when the entry signal occurs and a 1.8:1 risk/reward target."
+    ];
+    lines.push(c.outputMode === "indicator"
+      ? "Indicator mode plots the frozen stop and target as visual guidance; it does not submit Strategy Tester orders."
+      : "Strategy Tester orders use the same frozen swing stop and 1.8:1 target as the indicator profile.");
+    lines.push("TradingView alert conditions are included for validated long and short signals.");
+    lines.push("The profile was selected on 2019-2022 development data and passed 2023-2024 validation plus a higher-cost stress check; the 2025+ final holdout remains unopened.");
+    return lines;
+  }
+
   const plan = buildBehaviorPlan(c);
   const visual = buildVisualPlan(c);
   const lines: string[] = [];
