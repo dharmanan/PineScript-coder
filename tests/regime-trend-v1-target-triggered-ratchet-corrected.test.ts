@@ -68,10 +68,12 @@ describe("Regime Trend v1 corrected ratchet comparison", () => {
   });
 
   it("does not call an original stop after activation a ratchet exit", () => {
-    const candidate = TARGET_TRIGGERED_RATCHET_CANDIDATES[2];
+    const candidate = TARGET_TRIGGERED_RATCHET_CANDIDATES.find(
+      (item) => item.id === "touch-2.00-lock-0.00"
+    )!;
     const candles = map([
       candle(0, { high: 121, low: 95 }),
-      candle(FIVE, { open: 95, high: 96, low: 89 }),
+      candle(FIVE, { open: 89, high: 96, low: 88 }),
       candle(2 * FIVE),
       candle(3 * FIVE)
     ]);
@@ -81,7 +83,7 @@ describe("Regime Trend v1 corrected ratchet comparison", () => {
       candles,
       candidate
     );
-    expect(["BASELINE_STOP", "BASELINE_STOP_AFTER_ACTIVATION"]).toContain(result.classification);
+    expect(result.classification).toBe("BASELINE_STOP_AFTER_ACTIVATION");
   });
 
   it("keeps identical baseline exits identical when ratchet never binds", () => {
