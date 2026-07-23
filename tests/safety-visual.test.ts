@@ -52,6 +52,26 @@ describe("indicator risk lifecycle", () => {
     expect(code).toContain("riskTarget := na");
   });
 
+  it("keeps the last risk prices and dates available in the dashboard", () => {
+    const config = clone(defaultConfig);
+    config.outputMode = "indicator";
+    config.risk.stopMode = "atr";
+    config.risk.takeProfitMode = "risk_reward";
+    config.execution.showDashboard = true;
+    const code = compilePine(config);
+
+    expect(code).toContain("var float lastOutcomeEntry = na");
+    expect(code).toContain("var float lastOutcomePrice = na");
+    expect(code).toContain("var int lastOutcomeEntryTime = na");
+    expect(code).toContain("var int lastOutcomeTime = na");
+    expect(code).toContain('"Last entry"');
+    expect(code).toContain('"Result price"');
+    expect(code).toContain('"Entry date"');
+    expect(code).toContain('"Result date"');
+    expect(code).toContain('str.format_time(lastOutcomeEntryTime, "yyyy-MM-dd HH:mm")');
+    expect(code).toContain('str.format_time(lastOutcomeTime, "yyyy-MM-dd HH:mm")');
+  });
+
   it("does not add visual lifecycle state to Strategy Tester mode", () => {
     const config = clone(defaultConfig);
     config.outputMode = "strategy";
