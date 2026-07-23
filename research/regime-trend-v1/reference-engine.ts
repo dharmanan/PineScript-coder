@@ -11,6 +11,30 @@ export type Candle = {
 
 export type ExitReason = "initial_stop" | "trailing_stop" | "trend_exit";
 
+export type StrategyParameters = {
+  emaFast: number;
+  emaSlow: number;
+  donchianLookback: number;
+  atrLength: number;
+  atrFloor: number;
+  initialStopAtr: number;
+  trailingStopAtr: number;
+  commission: number;
+  slippage: number;
+};
+
+export const REGIME_TREND_V1_DEFAULTS: Readonly<StrategyParameters> = Object.freeze({
+  emaFast: 50,
+  emaSlow: 200,
+  donchianLookback: 20,
+  atrLength: 14,
+  atrFloor: 0.005,
+  initialStopAtr: 2.5,
+  trailingStopAtr: 3,
+  commission: 0.001,
+  slippage: 0.0005
+});
+
 export type SignalRecord = {
   signalIndex: number;
   signalTimestamp: Timestamp;
@@ -28,7 +52,7 @@ export type StopUpdate = {
 
 export type TradeLedger = {
   strategy_id: "regime-trend-v1";
-  implementation_version: "typescript-reference-v1.0.1";
+  implementation_version: string;
   dataset_hash: string;
   symbol: string;
   timeframe: "4h";
@@ -75,16 +99,20 @@ export type BacktestResult = {
   openPosition: OpenPosition | null;
 };
 
-const EMA_FAST = 50;
-const EMA_SLOW = 200;
-const DONCHIAN = 20;
-const ATR_LENGTH = 14;
-const ATR_FLOOR = 0.005;
-const INITIAL_STOP_ATR = 2.5;
-const TRAILING_STOP_ATR = 3;
-const COMMISSION = 0.001;
-const SLIPPAGE = 0.0005;
-const WARMUP_INDEX = Math.max(EMA_SLOW, DONCHIAN, ATR_LENGTH) - 1;
+function validateParameters(parameters: StrategyParameters): void {
+  const positiveIntegers = [parameters.emaFast, parameters.emaSlow, parameters.donchianLookback, parameters.atrLength];
+  if (positiveIntegers.some((value) => !Number.isInteger(value) || value <= 0)) {
+    throw new Error("Indicator lengths must be positive integers");
+  }
+  if (parameters.emaFast >= parameters.emaSlow) throw new Error("emaFast must be less than emaSlow");
+  const positive = [parameters.atrFloor, parameters.initialStopAtr, parameters.trailingStopAtr];
+  if (positive.some((value) => !Number.isFinite(value) || value <= 0)) {
+    throw new Error("ATR parameters must be positive");
+  }
+  if (parameters.commission < 0 || parameters.slippage < 0) {
+    throw new Error("Costs cannot be negative");
+  }
+}
 
 function assertCandle(candle: Candle, index: number): void {
   const values = [candle.open, candle.high, candle.low, candle.close, candle.volume];
@@ -121,7 +149,7 @@ export function ema(values: number[], length: number): Array<number | undefined>
   return output;
 }
 
-export function wilderAtr(candles: Candle[], length = ATR_LENGTH): Array<number | undefined> {
+export function wilderAtr(candles: Candle[], length = 14): Array<number | undefined> {
   if (!Number.isInteger(length) || length <= 0) throw new Error("ATR length must be positive");
   const output: Array<number | undefined> = new Array(candles.length);
   if (candles.length === 0) return output;
@@ -147,10 +175,10 @@ export function wilderAtr(candles: Candle[], length = ATR_LENGTH): Array<number 
   return output;
 }
 
-function highestPreviousHigh(candles: Candle[], index: number): number | undefined {
-  if (index < DONCHIAN) return undefined;
+function highestPreviousHigh(candles: Candle[], index: number, lookback: number): number | undefined {
+  if (index < lookback) return undefined;
   let highest = Number.NEGATIVE_INFINITY;
-  for (let cursor = index - DONCHIAN; cursor < index; cursor += 1) {
+  for (let cursor = index - lookback; cursor < index; cursor += 1) {
     highest = Math.max(highest, candles[cursor].high);
   }
   return highest;
@@ -169,16 +197,29 @@ function closeTrade(args: {
   exitReason: ExitReason;
   datasetHash: string;
   symbol: string;
+  commission: number;
+  implementationVersion: string;
 }): TradeLedger {
-  const { position, exitIndex, exitTimestamp, rawExitReference, exitFill, exitReason, datasetHash, symbol } = args;
-  const exitFee = exitFill * position.quantity * COMMISSION;
+  const {
+    position,
+    exitIndex,
+    exitTimestamp,
+    rawExitReference,
+    exitFill,
+    exitReason,
+    datasetHash,
+    symbol,
+    commission,
+    implementationVersion
+  } = args;
+  const exitFee = exitFill * position.quantity * commission;
   const grossPnl = (exitFill - position.entryFill) * position.quantity;
   const netPnl = grossPnl - position.entryFee - exitFee;
   const entryNotional = position.entryFill * position.quantity;
 
   return {
     strategy_id: "regime-trend-v1",
-    implementation_version: "typescript-reference-v1.0.1",
+    implementation_version: implementationVersion,
     dataset_hash: datasetHash,
     symbol,
     timeframe: "4h",
@@ -205,16 +246,33 @@ function closeTrade(args: {
 
 export function runRegimeTrendV1(
   candles: Candle[],
-  options: { datasetHash?: string; symbol?: string } = {}
+  options: {
+    datasetHash?: string;
+    symbol?: string;
+    parameters?: Partial<StrategyParameters>;
+    implementationVersion?: string;
+  } = {}
 ): BacktestResult {
   validateCandles(candles);
 
+  const parameters: StrategyParameters = {
+    ...REGIME_TREND_V1_DEFAULTS,
+    ...(options.parameters ?? {})
+  };
+  validateParameters(parameters);
+
   const datasetHash = options.datasetHash ?? "synthetic";
   const symbol = options.symbol ?? "TESTUSDT";
+  const implementationVersion = options.implementationVersion ?? "typescript-reference-v1.1.0";
+  const warmupIndex = Math.max(
+    parameters.emaSlow,
+    parameters.donchianLookback,
+    parameters.atrLength
+  ) - 1;
   const closes = candles.map((candle) => candle.close);
-  const ema50 = ema(closes, EMA_FAST);
-  const ema200 = ema(closes, EMA_SLOW);
-  const atr14 = wilderAtr(candles, ATR_LENGTH);
+  const fastEma = ema(closes, parameters.emaFast);
+  const slowEma = ema(closes, parameters.emaSlow);
+  const atr = wilderAtr(candles, parameters.atrLength);
 
   const trades: TradeLedger[] = [];
   const signals: SignalRecord[] = [];
@@ -239,7 +297,9 @@ export function runRegimeTrendV1(
         exitFill,
         exitReason,
         datasetHash,
-        symbol
+        symbol,
+        commission: parameters.commission,
+        implementationVersion
       })
     );
     position = null;
@@ -251,10 +311,10 @@ export function runRegimeTrendV1(
     let exitedThisBar = false;
 
     if (pendingEntry) {
-      const entryFill = candle.open * (1 + SLIPPAGE);
+      const entryFill = candle.open * (1 + parameters.slippage);
       const quantity = 1 / entryFill;
-      const entryFee = entryFill * quantity * COMMISSION;
-      const initialStop = entryFill - INITIAL_STOP_ATR * pendingEntry.atr;
+      const entryFee = entryFill * quantity * parameters.commission;
+      const initialStop = entryFill - parameters.initialStopAtr * pendingEntry.atr;
       position = {
         signalIndex: pendingEntry.signalIndex,
         signalTimestamp: pendingEntry.signalTimestamp,
@@ -275,9 +335,9 @@ export function runRegimeTrendV1(
 
     if (position && pendingTrendExit) {
       if (candle.open <= position.activeStop) {
-        recordExit(index, candle.open, candle.open * (1 - SLIPPAGE), stopReason(position));
+        recordExit(index, candle.open, candle.open * (1 - parameters.slippage), stopReason(position));
       } else {
-        recordExit(index, candle.open, candle.open * (1 - SLIPPAGE), "trend_exit");
+        recordExit(index, candle.open, candle.open * (1 - parameters.slippage), "trend_exit");
       }
       exitedThisBar = true;
     }
@@ -285,46 +345,46 @@ export function runRegimeTrendV1(
     if (position && !exitedThisBar) {
       const stop = position.activeStop;
       if (candle.open <= stop) {
-        recordExit(index, candle.open, candle.open * (1 - SLIPPAGE), stopReason(position));
+        recordExit(index, candle.open, candle.open * (1 - parameters.slippage), stopReason(position));
         exitedThisBar = true;
       } else if (candle.low <= stop) {
-        recordExit(index, stop, stop * (1 - SLIPPAGE), stopReason(position));
+        recordExit(index, stop, stop * (1 - parameters.slippage), stopReason(position));
         exitedThisBar = true;
       }
     }
 
     if (position && !exitedThisBar) {
       position.highestCloseSinceEntry = Math.max(position.highestCloseSinceEntry, candle.close);
-      const currentAtr = atr14[index];
+      const currentAtr = atr[index];
       if (currentAtr !== undefined) {
         const previousStop = position.activeStop;
-        const candidateStop = position.highestCloseSinceEntry - TRAILING_STOP_ATR * currentAtr;
+        const candidateStop = position.highestCloseSinceEntry - parameters.trailingStopAtr * currentAtr;
         const activeStop = Math.max(previousStop, candidateStop);
         if (activeStop > previousStop) position.trailingActivated = true;
         position.activeStop = activeStop;
         stopUpdates.push({ index, timestamp: candle.timestamp, previousStop, candidateStop, activeStop });
       }
 
-      const fast = ema50[index];
+      const fast = fastEma[index];
       if (fast !== undefined && candle.close < fast && index + 1 < candles.length) {
         pendingTrendExit = true;
       }
     }
 
-    if (!position && !pendingEntry && !exitedThisBar && index >= WARMUP_INDEX && index + 1 < candles.length) {
-      const fast = ema50[index];
-      const slow = ema200[index];
-      const atr = atr14[index];
-      const breakoutLevel = highestPreviousHigh(candles, index);
-      if (fast !== undefined && slow !== undefined && atr !== undefined && breakoutLevel !== undefined) {
+    if (!position && !pendingEntry && !exitedThisBar && index >= warmupIndex && index + 1 < candles.length) {
+      const fast = fastEma[index];
+      const slow = slowEma[index];
+      const currentAtr = atr[index];
+      const breakoutLevel = highestPreviousHigh(candles, index, parameters.donchianLookback);
+      if (fast !== undefined && slow !== undefined && currentAtr !== undefined && breakoutLevel !== undefined) {
         const bullishRegime = fast > slow && candle.close > slow;
         const breakout = candle.close > breakoutLevel;
-        const volatilityAllowed = atr / candle.close >= ATR_FLOOR;
+        const volatilityAllowed = currentAtr / candle.close >= parameters.atrFloor;
         if (bullishRegime && breakout && volatilityAllowed) {
           pendingEntry = {
             signalIndex: index,
             signalTimestamp: candle.timestamp,
-            atr,
+            atr: currentAtr,
             breakoutLevel
           };
           signals.push(pendingEntry);
