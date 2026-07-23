@@ -27,18 +27,28 @@ function makeExitTrade(trade, timestamp, rawReference, reason, commission, slipp
   };
 }
 
-function normalizedStopUpdates(trade, stopUpdates) {
+function isBaselineStopExit(trade) {
+  return trade.exit_reason === "initial_stop" || trade.exit_reason === "trailing_stop";
+}
+
+function replayEndExclusive(trade) {
+  return isBaselineStopExit(trade)
+    ? trade.exit_timestamp + FOUR_HOURS_MS
+    : trade.exit_timestamp;
+}
+
+function normalizedStopUpdates(trade, stopUpdates, endExclusive) {
   return stopUpdates
     .filter(
       (update) =>
         update.timestamp >= trade.entry_timestamp &&
-        update.timestamp < trade.exit_timestamp
+        update.timestamp < endExclusive
     )
     .map((update) => ({
       activation_timestamp: update.timestamp + FOUR_HOURS_MS,
       active_stop: update.activeStop
     }))
-    .filter((update) => update.activation_timestamp < trade.exit_timestamp)
+    .filter((update) => update.activation_timestamp < endExclusive)
     .sort((left, right) => left.activation_timestamp - right.activation_timestamp);
 }
 
@@ -51,13 +61,14 @@ export function replayTrade5m(
 ) {
   if (!Number.isFinite(targetAtr) || targetAtr <= 0) throw new Error("targetAtr must be positive");
   const target = trade.entry_fill + targetAtr * trade.entry_atr;
-  const updates = normalizedStopUpdates(trade, stopUpdates);
+  const endExclusive = replayEndExclusive(trade);
+  const updates = normalizedStopUpdates(trade, stopUpdates, endExclusive);
   let activeStop = trade.initial_stop;
   let updateIndex = 0;
 
   for (
     let timestamp = trade.entry_timestamp;
-    timestamp < trade.exit_timestamp;
+    timestamp < endExclusive;
     timestamp += FIVE_MINUTES_MS
   ) {
     while (
@@ -192,6 +203,18 @@ export function replayTrade5m(
     }
   }
 
+  if (isBaselineStopExit(trade)) {
+    return {
+      classification: "DATA_MISMATCH",
+      target_atr: targetAtr,
+      target,
+      timestamp: trade.exit_timestamp,
+      active_stop: activeStop,
+      lower_trade: trade,
+      upper_trade: trade
+    };
+  }
+
   return {
     classification: "BASELINE_EXIT",
     target_atr: targetAtr,
@@ -208,7 +231,8 @@ export function summarizeReplayResults(baselineTrades, results) {
     STOP_FIRST: 0,
     AMBIGUOUS_SAME_5M: 0,
     BASELINE_EXIT: 0,
-    DATA_GAP: 0
+    DATA_GAP: 0,
+    DATA_MISMATCH: 0
   };
   for (const result of results) counts[result.classification] += 1;
 
@@ -225,7 +249,10 @@ export function summarizeReplayResults(baselineTrades, results) {
     lower_bound_net_change: lower.total_net_pnl - baseline.total_net_pnl,
     upper_bound_net_change: upper.total_net_pnl - baseline.total_net_pnl,
     counts,
-    fully_resolved: counts.DATA_GAP === 0 && counts.AMBIGUOUS_SAME_5M === 0,
+    fully_resolved:
+      counts.DATA_GAP === 0 &&
+      counts.DATA_MISMATCH === 0 &&
+      counts.AMBIGUOUS_SAME_5M === 0,
     target_first_baseline_winners: results.filter(
       (result, index) => result.classification === "TARGET_FIRST" && baselineTrades[index].net_pnl > 0
     ).length,
@@ -243,6 +270,9 @@ export function summarizeReplayResults(baselineTrades, results) {
       .map((result) => result.timestamp),
     data_gap_timestamps: results
       .filter((result) => result.classification === "DATA_GAP")
+      .map((result) => result.timestamp),
+    data_mismatch_timestamps: results
+      .filter((result) => result.classification === "DATA_MISMATCH")
       .map((result) => result.timestamp)
   };
 }
