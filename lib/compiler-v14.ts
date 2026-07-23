@@ -72,7 +72,7 @@ plot(divRsi, "RSI divergence", linewidth=2, color=color.rgb(41, 98, 255))
 divMiddleLine = hline(50, "RSI middle", color=color.rgb(120, 123, 134), linestyle=hline.style_dotted)
 divOverboughtLine = hline(70, "RSI overbought", color=color.rgb(120, 123, 134), linestyle=hline.style_dotted)
 divOversoldLine = hline(30, "RSI oversold", color=color.rgb(120, 123, 134), linestyle=hline.style_dotted)
-fill(divOverboughtLine, divOversoldLine, "RSI divergence background", color=color.rgb(33, 150, 243, 90))
+fill(divOverboughtLine, divOversoldLine, color=color.rgb(33, 150, 243, 90), title="RSI divergence background")
 
 divPivotLowFound = not na(ta.pivotlow(divRsi, divPivotLeft, divPivotRight))
 divPivotHighFound = not na(ta.pivothigh(divRsi, divPivotLeft, divPivotRight))
