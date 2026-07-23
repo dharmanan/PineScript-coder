@@ -4,12 +4,12 @@ import type { StrategyConfig } from "./types";
 export function compilePine(config: StrategyConfig): string {
   let code = compileBase(config);
   const refineDivergenceReversal =
-    config.name === "RSI Divergence Reversal" &&
+    config.presetId === "rsi_divergence_reversal" &&
     config.outputMode === "indicator";
 
   if (!refineDivergenceReversal) return code;
 
-  const divergenceRsiInput = 'divRsiLength = input.int(14, "Divergence RSI period", minval=1)';
+  const divergenceRsiInput = `divRsiLength = input.int(${config.momentum.rsiLength}, "Divergence RSI period", minval=1)`;
   const divergenceRsiCalculation = "divRsi = ta.rsi(close, divRsiLength)";
   if (!code.includes(divergenceRsiInput) || !code.includes(divergenceRsiCalculation)) {
     throw new Error("Compiler transform anchor missing: divergence RSI consistency");
