@@ -4,3 +4,4 @@ node_modules
 .env.local
 .DS_Store
 research/regime-trend-v1/data/
+research/regime-trend-v1/results/
