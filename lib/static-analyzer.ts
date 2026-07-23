@@ -8,12 +8,46 @@ export type StaticIssue = {
 };
 
 const contains = (code: string, value: string) => code.includes(value);
+const VALIDATED_BNB_PROFILE = "bnb_30m_ema_confirmed_regular_divergence_v1";
 
 export function analyzeGeneratedPine(config: StrategyConfig, code: string): StaticIssue[] {
-  const plan = buildBehaviorPlan(config);
   const issues: StaticIssue[] = [];
   const error = (codeValue: string, message: string) => issues.push({ level: "error", code: codeValue, message });
   const warn = (codeValue: string, message: string) => issues.push({ level: "warning", code: codeValue, message });
+
+  if (config.researchProfile === VALIDATED_BNB_PROFILE) {
+    if (!code.startsWith("//@version=6")) error("pine.version", "Generated code must start with Pine Script version 6.");
+    if (config.outputMode === "strategy" && !contains(code, "strategy(")) error("output.strategy_missing", "Validated Strategy mode did not generate a strategy declaration.");
+    if (config.outputMode === "indicator" && !contains(code, "indicator(")) error("output.indicator_missing", "Validated Indicator mode did not generate an indicator declaration.");
+    const required = [
+      ['expectedTicker = "BNBUSDT"', "profile.market_missing"],
+      ['expectedTimeframe = "30"', "profile.timeframe_missing"],
+      ["regularBullishDivergence =", "profile.bullish_divergence_missing"],
+      ["regularBearishDivergence =", "profile.bearish_divergence_missing"],
+      ["ta.crossover(ema9, wma45)", "profile.long_confirmation_missing"],
+      ["ta.crossunder(ema9, wma45)", "profile.short_confirmation_missing"],
+      ["longTrendOk = ema50 > ema200 and close > ema200", "profile.long_trend_missing"],
+      ["shortTrendOk = ema50 < ema200 and close < ema200", "profile.short_trend_missing"],
+      ["volume >= volumeAverage * volumeMultiplier", "profile.volume_missing"],
+      ["activeStop := ta.lowest(low, swingLength)", "profile.long_stop_missing"],
+      ["activeStop := ta.highest(high, swingLength)", "profile.short_stop_missing"],
+      ["activeTarget := close + (close - activeStop) * riskReward", "profile.long_target_missing"],
+      ["activeTarget := close - (activeStop - close) * riskReward", "profile.short_target_missing"],
+      ["alertcondition(", "alerts.missing"]
+    ] as const;
+    for (const [needle, issueCode] of required) {
+      if (!contains(code, needle)) error(issueCode, `Validated profile is missing required rule: ${needle}`);
+    }
+    if (contains(code, "request.security")) error("profile.unexpected_htf", "Validated BNB 30m profile must not use request.security().");
+    if (config.outputMode === "strategy" && !contains(code, "strategy.exit")) error("strategy.risk_exit_missing", "Validated strategy requires frozen stop and target exits.");
+    if (config.outputMode === "indicator") {
+      if (!contains(code, 'plot(activeStop, "Frozen swing stop"')) error("indicator.risk_stop_missing", "Validated indicator requires the frozen swing stop plot.");
+      if (!contains(code, 'plot(activeTarget, "1.8R target"')) error("indicator.risk_target_missing", "Validated indicator requires the 1.8R target plot.");
+    }
+    return issues;
+  }
+
+  const plan = buildBehaviorPlan(config);
 
   if (!code.startsWith("//@version=6")) error("pine.version", "Generated code must start with Pine Script version 6.");
   if (plan.output === "strategy" && !contains(code, "strategy(")) error("output.strategy_missing", "Strategy mode did not generate a strategy declaration.");
