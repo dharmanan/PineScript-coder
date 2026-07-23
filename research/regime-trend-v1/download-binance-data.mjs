@@ -27,19 +27,25 @@ async function main() {
     });
     const validation = validateCandles(candles, {
       expectedStart: DATASET_START_MS,
-      expectedEndExclusive: DATASET_END_EXCLUSIVE_MS
+      expectedEndExclusive: DATASET_END_EXCLUSIVE_MS,
+      gapPolicy: "record"
     });
     const fileName = `${symbol}-4h-2019-01-01_2026-06-30.csv`;
     const csv = candlesToCsv(candles);
     await writeFile(join(outputDirectory, fileName), csv, "utf8");
     files.push(buildManifestEntry({ symbol, fileName, csv, validation }));
-    console.log(`Validated ${symbol}: ${validation.rowCount} rows`);
+    console.log(
+      `Validated ${symbol}: ${validation.rowCount} rows, ` +
+      `${validation.missingIntervalCount} missing intervals, ` +
+      `${validation.shortenedCloseCount} shortened closes`
+    );
   }
 
   const manifest = {
-    schema_version: 1,
+    schema_version: 2,
     strategy_id: "regime-trend-v1",
     source: "Binance Spot REST /api/v3/klines",
+    gap_policy: "record exchange maintenance gaps; never synthesize candles",
     generated_at: new Date().toISOString(),
     requested_start: new Date(DATASET_START_MS).toISOString(),
     requested_end_exclusive: new Date(DATASET_END_EXCLUSIVE_MS).toISOString(),
