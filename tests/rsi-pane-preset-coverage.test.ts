@@ -15,6 +15,21 @@ const rsiPanePresetNames = [
   "Long-Term Trend Guard"
 ] as const;
 
+const hiddenEnabledPresetNames = [
+  "4H Swing Trend",
+  "Selective Multi-Timeframe",
+  "Long-Term Trend Guard"
+] as const;
+
+const hiddenDisabledPresetNames = [
+  "Balanced Intraday",
+  "Fast EMA Scalper",
+  "VWAP Session Trader",
+  "Spot Accumulation",
+  "Breakout Momentum",
+  "RSI Divergence Reversal"
+] as const;
+
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 
 const findPreset = (name: string): StrategyConfig => {
@@ -54,6 +69,30 @@ describe("RSI pane preset coverage", () => {
     expect(code).not.toContain('divPivotLeft = input.int(5, "Divergence pivot left"');
     expect(code).not.toContain('divPivotRight = input.int(5, "Divergence pivot right"');
   });
+
+  for (const name of hiddenEnabledPresetNames) {
+    it(`enables hidden divergence by default for ${name}`, () => {
+      const config = findPreset(name);
+      config.outputMode = "indicator";
+
+      const code = compilePine(config);
+
+      expect(code).toContain('showHiddenBullDiv = input.bool(true, "Show hidden bullish divergence")');
+      expect(code).toContain('showHiddenBearDiv = input.bool(true, "Show hidden bearish divergence")');
+    });
+  }
+
+  for (const name of hiddenDisabledPresetNames) {
+    it(`disables hidden divergence by default for ${name}`, () => {
+      const config = findPreset(name);
+      config.outputMode = "indicator";
+
+      const code = compilePine(config);
+
+      expect(code).toContain('showHiddenBullDiv = input.bool(false, "Show hidden bullish divergence")');
+      expect(code).toContain('showHiddenBearDiv = input.bool(false, "Show hidden bearish divergence")');
+    });
+  }
 
   it("keeps the RSI pane after the editable script name changes", () => {
     const config = findPreset("Balanced Intraday");
