@@ -7,11 +7,12 @@ export type ContractIssue = {
   message: string;
 };
 
+const VALIDATED_BNB_PROFILE = "bnb_30m_ema_confirmed_regular_divergence_v1";
+
 const claimsShortEntries = (text: string): boolean => {
   const sentences = text.split(/[.!?]+/).map((sentence) => sentence.trim()).filter(Boolean);
   const positiveClaim = /\b(?:produce|produces|create|creates|generate|generates|open|opens)\s+short\s+(?:signals?|entries?|positions?)\b|\bshort\s+entries?\s+(?:are|is)\s+(?:generated|created|opened)\b/;
   const negation = /\b(?:never|not|no|does not|doesn't|will not|won't|cannot|can't)\b/;
-
   return sentences.some((sentence) => positiveClaim.test(sentence) && !negation.test(sentence));
 };
 
@@ -25,10 +26,41 @@ const mentionsBreakoutVerificationLevels = (text: string): boolean => {
 };
 
 export function analyzeBehaviorContract(config: StrategyConfig, code: string, explanation: string[]): ContractIssue[] {
-  const plan = buildBehaviorPlan(config);
   const text = explanation.join(" ").toLowerCase();
   const issues: ContractIssue[] = [];
   const error = (codeValue: string, message: string) => issues.push({ level: "error", code: codeValue, message });
+
+  if (config.researchProfile === VALIDATED_BNB_PROFILE) {
+    const requiredExplanation = [
+      ["bnbusdt", "explanation.profile_market_missing"],
+      ["30-minute", "explanation.profile_timeframe_missing"],
+      ["regular rsi divergence", "explanation.profile_divergence_missing"],
+      ["ema 9 / wma 45", "explanation.profile_confirmation_missing"],
+      ["ema 50", "explanation.profile_trend_missing"],
+      ["0.8 times", "explanation.profile_volume_missing"],
+      ["15-bar swing stop", "explanation.profile_stop_missing"],
+      ["1.8:1", "explanation.profile_target_missing"],
+      ["alert conditions", "explanation.alerts_missing"]
+    ] as const;
+    for (const [needle, issueCode] of requiredExplanation) {
+      if (!text.includes(needle)) error(issueCode, `Validated profile explanation is missing: ${needle}`);
+    }
+    if (!code.includes('expectedTicker = "BNBUSDT"') || !code.includes('expectedTimeframe = "30"')) {
+      error("code.profile_scope_missing", "Validated profile code must enforce BNBUSDT and 30-minute scope.");
+    }
+    if (!code.includes("ta.crossover(ema9, wma45)") || !code.includes("ta.crossunder(ema9, wma45)")) {
+      error("code.profile_confirmation_missing", "Validated profile code must include EMA9/WMA45 confirmation.");
+    }
+    if (config.outputMode === "indicator") {
+      if (!text.includes("visual guidance")) error("explanation.visual_risk_missing", "Indicator explanation must say that risk levels are visual guidance.");
+      if (!code.includes('plot(activeStop, "Frozen swing stop"')) error("code.visual_stop_missing", "Validated indicator requires the frozen stop plot.");
+    } else if (!text.includes("strategy tester orders")) {
+      error("explanation.strategy_orders_missing", "Validated strategy explanation must describe Strategy Tester orders.");
+    }
+    return issues;
+  }
+
+  const plan = buildBehaviorPlan(config);
 
   if (!text.includes(plan.entry.trigger.label.toLowerCase())) error("explanation.trigger_missing", "Explanation does not describe the configured entry trigger.");
 
