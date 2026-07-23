@@ -8,13 +8,9 @@ const appendForceOverlay = (line: string): string => {
 
 export function compilePine(config: StrategyConfig): string {
   let code = compileBase(config);
-  const supportsIntegratedRsiPane =
-    config.name === "Fast EMA Scalper" ||
-    config.name === "Balanced Intraday" ||
-    config.name === "VWAP Session Trader" ||
-    config.name === "RSI Divergence Reversal" ||
-    config.name === "4H Swing Trend";
-  const useIntegratedRsiPane = supportsIntegratedRsiPane && config.outputMode === "indicator";
+  const useIntegratedRsiPane =
+    config.outputMode === "indicator" &&
+    (config.momentum.rsiEnabled || config.momentum.divergenceEnabled);
 
   if (!useIntegratedRsiPane) return code;
 
@@ -27,7 +23,7 @@ export function compilePine(config: StrategyConfig): string {
   code = code.replace(declaration, paneDeclaration);
 
   let overlayVisuals = 0;
-  code = code.replace(/^(bgcolor|plot)\(.*\)$/gm, (line) => {
+  code = code.replace(/^(bgcolor|plot|plotshape)\(.*\)$/gm, (line) => {
     overlayVisuals += 1;
     return appendForceOverlay(line);
   });
