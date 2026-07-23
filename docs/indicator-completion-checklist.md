@@ -23,10 +23,10 @@
 - [x] Remove the temporary `/rsi-companion` page, standalone companion generator and companion test.
 - [x] Add focused generator tests for all nine RSI-pane presets and verify Supertrend Volume remains panel-free.
 - [x] Verify main-chart routing for LONG/SHORT/BUY/EXIT labels, overlays, risk levels and dashboard on all affected presets.
+- [x] Read RSI length and divergence pivot strength from each preset configuration instead of fixed panel defaults.
 
 ## Remaining
 
-- [ ] Read RSI length and divergence pivot strength from each preset configuration instead of fixed panel defaults.
 - [ ] Decouple RSI-pane eligibility from the editable script name.
 - [ ] Define and test preset-specific hidden-divergence defaults.
 - [ ] Keep panel and entry divergence aligned whenever Confirmed RSI divergence is enabled.
