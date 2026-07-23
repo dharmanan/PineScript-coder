@@ -6,10 +6,23 @@ const appendForceOverlay = (line: string): string => {
   return `${line.slice(0, -1)}, force_overlay=true)`;
 };
 
+const rsiPanePresetNames = new Set([
+  "Balanced Intraday",
+  "Fast EMA Scalper",
+  "VWAP Session Trader",
+  "4H Swing Trend",
+  "Spot Accumulation",
+  "Breakout Momentum",
+  "RSI Divergence Reversal",
+  "Selective Multi-Timeframe",
+  "Long-Term Trend Guard"
+]);
+
 export function compilePine(config: StrategyConfig): string {
   let code = compileBase(config);
   const useIntegratedRsiPane =
     config.outputMode === "indicator" &&
+    rsiPanePresetNames.has(config.name) &&
     (config.momentum.rsiEnabled || config.momentum.divergenceEnabled);
 
   if (!useIntegratedRsiPane) return code;
