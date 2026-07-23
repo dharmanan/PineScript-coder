@@ -71,29 +71,29 @@ describe("Regime Trend v1 five-minute archive tools", () => {
     expect(result.missing_interval_count).toBeGreaterThan(2);
   });
 
-  it("records shortened and extended close-time anomalies without rejecting valid OHLC", () => {
+  it("records pre-open, shortened, and extended close-time anomalies without rejecting valid OHLC", () => {
     const start = Date.parse("2024-12-01T00:00:00.000Z");
     const expectedClose = start + FIVE_MINUTES_MS - 1;
     const candles = parseArchiveCsv(
       [
-        csvRow(start, { closeTime: expectedClose - 1000 }),
+        csvRow(start, { closeTime: start - 1 }),
         csvRow(start + FIVE_MINUTES_MS, {
-          closeTime: start + FIVE_MINUTES_MS + FIVE_MINUTES_MS - 1 + 60_000
+          closeTime: start + FIVE_MINUTES_MS + FIVE_MINUTES_MS - 1 - 1000
+        }),
+        csvRow(start + 2 * FIVE_MINUTES_MS, {
+          closeTime: start + 2 * FIVE_MINUTES_MS + FIVE_MINUTES_MS - 1 + 60_000
         })
       ].join("\n")
     );
     const result = validateArchiveCandles(candles, "2024-12");
-    expect(result.irregular_close_count).toBe(2);
+    expect(result.irregular_close_count).toBe(3);
+    expect(result.preopen_close_count).toBe(1);
     expect(result.shortened_close_count).toBe(1);
     expect(result.extended_close_count).toBe(1);
+    expect(result.preopen_closes[0].precedes_open_by_ms).toBe(1);
     expect(result.shortened_closes[0].shortened_by_ms).toBe(1000);
     expect(result.extended_closes[0].extended_by_ms).toBe(60_000);
-  });
-
-  it("rejects a close time that precedes its open time", () => {
-    const start = Date.parse("2024-12-01T00:00:00.000Z");
-    const candles = parseArchiveCsv(csvRow(start, { closeTime: start - 1 }));
-    expect(() => validateArchiveCandles(candles, "2024-12")).toThrow(/precedes open time/);
+    expect(expectedClose).toBe(start + FIVE_MINUTES_MS - 1);
   });
 
   it("rejects malformed OHLC bounds", () => {
