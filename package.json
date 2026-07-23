@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run test && npm run build",
-    "research:data": "node research/regime-trend-v1/download-binance-data.mjs"
+    "research:data": "node research/regime-trend-v1/download-binance-data.mjs",
+    "research:backtest": "node research/regime-trend-v1/run-development-validation.mjs"
   },
   "dependencies": {
     "next": "^15.5.21",
