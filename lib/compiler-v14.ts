@@ -13,7 +13,8 @@ const rsiPanePresetNames = new Set([
   "4H Swing Trend",
   "RSI Divergence Reversal",
   "Spot Accumulation",
-  "Breakout Momentum"
+  "Breakout Momentum",
+  "Selective Multi-Timeframe"
 ]);
 
 export function compilePine(config: StrategyConfig): string {
