@@ -1,10 +1,10 @@
-# Regime Trend v1 — Frozen Hierarchical Intrabar Replay Plan
+# Regime Trend v1 — Frozen 5-Minute Intrabar Replay Plan
 
-Status: **Frozen before lower-timeframe replay results are viewed**
+Status: **Frozen before 5-minute replay results are viewed**
 
 Purpose: resolve the OHLC path ambiguity inside each 4-hour strategy candle and test whether an immediately executable profit target is reached before the active stop.
 
-The existing 4-hour strategy remains the signal generator. Lower-timeframe candles are used only to reconstruct event order and execution.
+The existing 4-hour strategy remains the signal generator. Five-minute candles are used to reconstruct event order and execution.
 
 ## 1. Core correction
 
@@ -26,21 +26,15 @@ Use only:
 
 The final holdout beginning 2025-01-01 remains closed.
 
-## 3. Hierarchical resolution
+## 3. Direct 5-minute resolution
 
-### Stage 1: 1-hour replay
+Download and hash-complete Binance Spot 5-minute candles for BTCUSDT, ETHUSDT and BNBUSDT through 2024-12-31.
 
-Download and hash-complete Binance Spot 1-hour candles for BTCUSDT, ETHUSDT and BNBUSDT through 2024-12-31.
+Replay every frozen 4-hour baseline trade using the 5-minute candles contained inside its active lifetime.
 
-Replay every frozen 4-hour baseline trade using the 1-hour candles contained inside its active lifetime.
+When the same 5-minute candle contains both the active stop and the tested target, classify the event as `AMBIGUOUS_SAME_5M`. Do not invent an intrabar path.
 
-### Stage 2: selective 15-minute replay
-
-When the same 1-hour candle contains both the active stop and the tested target, classify the event as `AMBIGUOUS_SAME_1H`.
-
-Only these ambiguous 1-hour windows may be refined with 15-minute candles.
-
-If the same 15-minute candle still contains both levels, retain `AMBIGUOUS_SAME_15M`. Do not invent an intrabar path.
+No 1-hour or 15-minute intermediate replay is used.
 
 ## 4. Frozen immediate-exit targets
 
@@ -53,7 +47,7 @@ Test only full-position immediate target exits at:
 
 The target is measured from the baseline entry fill.
 
-A target exit occurs immediately when the lower-timeframe price first reaches the target. It does not wait for a 4-hour close.
+A target exit occurs immediately when the 5-minute price first reaches the target. It does not wait for a 4-hour close.
 
 No additional target may be introduced after viewing the replay results.
 
@@ -65,23 +59,23 @@ The original initial stop and 4-hour trailing-stop updates remain unchanged.
 - A trailing-stop update calculated from a completed 4-hour candle becomes active only at the next 4-hour candle open.
 - A pending trend exit remains an exit at the next 4-hour open.
 
-Lower-timeframe replay must not use future 4-hour closes to update a stop early.
+The 5-minute replay must not use future 4-hour closes to update a stop early.
 
-## 6. One-hour event ordering
+## 6. Five-minute event ordering
 
-For each active 1-hour candle:
+For each active 5-minute candle:
 
 1. Check opening gaps.
 2. If open is at or below the active stop, the stop occurs first.
 3. Else if open is at or above the target, the target occurs first.
-4. If the candle range reaches both stop and target, classify `AMBIGUOUS_SAME_1H`.
+4. If the candle range reaches both stop and target, classify `AMBIGUOUS_SAME_5M`.
 5. If only the target is reached, classify `TARGET_FIRST`.
 6. If only the stop is reached, classify `STOP_FIRST`.
-7. Otherwise continue to the next 1-hour candle.
+7. Otherwise continue to the next 5-minute candle.
 
-If no lower-timeframe target or stop occurs before the original baseline exit, retain `BASELINE_EXIT`.
+If no 5-minute target or stop occurs before the original baseline exit, retain `BASELINE_EXIT`.
 
-Any missing lower-timeframe interval inside the required replay window produces `DATA_GAP` rather than a guessed result.
+Any missing 5-minute interval inside the required replay window produces `DATA_GAP` rather than a guessed result.
 
 ## 7. Execution costs
 
@@ -90,7 +84,7 @@ Use the frozen baseline costs:
 - commission: 0.10% per side,
 - adverse slippage: 0.05% per side.
 
-A target touch uses the target reference with adverse sell slippage. A stop touch uses the active stop reference with adverse sell slippage. A gap through a stop uses the lower-timeframe candle open with adverse slippage.
+A target touch uses the target reference with adverse sell slippage. A stop touch uses the active stop reference with adverse sell slippage. A gap through a stop uses the 5-minute candle open with adverse slippage.
 
 ## 8. Required reports
 
@@ -99,20 +93,20 @@ For each partition, symbol and target report:
 - baseline trade count,
 - `TARGET_FIRST` count,
 - `STOP_FIRST` count,
-- `AMBIGUOUS_SAME_1H` count,
+- `AMBIGUOUS_SAME_5M` count,
 - `BASELINE_EXIT` count,
 - `DATA_GAP` count,
 - target-first count among baseline winners,
 - target-first count among baseline losers,
 - stop-first count among baseline winners,
 - stop-first count among baseline losers,
-- lower-bound total net PnL, treating same-hour ambiguity as stop-first,
-- upper-bound total net PnL, treating same-hour ambiguity as target-first,
+- lower-bound total net PnL, treating same-5-minute ambiguity as stop-first,
+- upper-bound total net PnL, treating same-5-minute ambiguity as target-first,
 - profit-factor bounds,
 - win-rate bounds,
 - results by symbol and by calendar quarter.
 
-Also report the exact 1-hour timestamps requiring selective 15-minute refinement.
+Also report the exact 5-minute timestamps that remain ambiguous.
 
 ## 9. Interpretation discipline
 
@@ -122,7 +116,7 @@ An immediate target candidate may advance only when:
 
 - its lower-bound result improves both development and validation/research,
 - the improvement is not carried by one symbol or one quarter,
-- ambiguity is low enough or resolved by selective 15-minute replay,
+- same-5-minute ambiguity is low enough that the conclusion is stable,
 - doubled execution costs do not remove the improvement.
 
 This stage does not authorize live trading, Pine implementation or final-holdout access.
