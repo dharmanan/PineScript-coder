@@ -26,8 +26,10 @@ describe("RSI Divergence Reversal consistency", () => {
     config.outputMode = "indicator";
     const code = compilePine(config);
 
-    expect(code).toContain("if longSignal and riskDirection == 0\n    riskEntry := close");
-    expect(code).toContain("if shortSignal and riskDirection == 0\n    riskEntry := close");
+    expect(code).toContain("acceptedLongSignal = longSignal and riskDirection != 1");
+    expect(code).toContain("acceptedShortSignal = shortSignal and riskDirection != -1");
+    expect(code).toContain("if acceptedLongSignal and riskDirection == 0\n    riskEntry := close");
+    expect(code).toContain("if acceptedShortSignal and riskDirection == 0\n    riskEntry := close");
     expect(code).toContain("oppositeSignalReversal =");
   });
 
