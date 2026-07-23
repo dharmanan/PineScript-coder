@@ -8,6 +8,7 @@ export type EntryTrigger = "trend_state" | "ema_cross" | "pullback_reclaim" | "v
 export type SpotExitMode = "trend_break" | "ema_cross" | "rsi_overbought" | "htf_bearish" | "combined";
 export type VisualProfile = "clean" | "enhanced" | "advanced";
 export type SessionTimezone = "exchange" | "America/New_York" | "Europe/London" | "Europe/Istanbul" | "UTC";
+export type ResearchProfile = "bnb_30m_ema_confirmed_regular_divergence_v1";
 
 export interface StrategyConfig {
   name: string;
@@ -19,6 +20,7 @@ export interface StrategyConfig {
   entryTrigger: EntryTrigger;
   spotExitMode: SpotExitMode;
   confirmedBarsOnly: boolean;
+  researchProfile?: ResearchProfile;
   higherTimeframe: {
     enabled: boolean;
     timeframe: string;
