@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compilePine } from "../lib/compiler";
 import { presets } from "../lib/presets";
+import { legacyRsiConfig } from "./helpers/legacy-rsi-config";
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 
@@ -22,13 +23,8 @@ describe("strategy ATR entry freeze", () => {
     expect(code).not.toContain("shortStop = strategy.position_avg_price + atrValue * atrMultiple");
   });
 
-  it("keeps the aligned divergence engine and freezes ATR for RSI Divergence Reversal strategy", () => {
-    const preset = presets.find((item) => item.name === "RSI Divergence Reversal");
-    expect(preset).toBeDefined();
-
-    const config = clone(preset!);
-    config.outputMode = "strategy";
-    const code = compilePine(config);
+  it("keeps the aligned divergence engine and freezes ATR for the generic RSI strategy", () => {
+    const code = compilePine(legacyRsiConfig("strategy"));
 
     expect(code).toContain("// Confirmed regular RSI divergence shared with Indicator mode.");
     expect(code).toContain("strategyAtrAtEntry := atrValue");
