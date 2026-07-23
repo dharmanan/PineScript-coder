@@ -29,10 +29,13 @@ export function compilePine(config: StrategyConfig): string {
   }
   code = code.replace(
     legacyDivergencePattern,
-    "// Entry divergence is shared with the integrated RSI pane below.\n" +
-      "bullishDivergence = divRegularBullAlert\n" +
-      "bearishDivergence = divRegularBearAlert\n\n"
+    "// Entry divergence is shared with the integrated RSI pane below.\n\n"
   );
 
-  return code.replace(filtersAnchor, paneBlock + filtersAnchor);
+  const divergenceAliases =
+    "// === Entry divergence aliases ===\n" +
+    "bullishDivergence = divRegularBullAlert\n" +
+    "bearishDivergence = divRegularBearAlert\n\n";
+
+  return code.replace(filtersAnchor, paneBlock + divergenceAliases + filtersAnchor);
 }
