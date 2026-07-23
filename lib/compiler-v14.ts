@@ -8,14 +8,15 @@ const appendForceOverlay = (line: string): string => {
 
 export function compilePine(config: StrategyConfig): string {
   let code = compileBase(config);
-  const useIntegratedRsiPane = config.name === "Fast EMA Scalper" && config.outputMode === "indicator";
+  const supportsIntegratedRsiPane = config.name === "Fast EMA Scalper" || config.name === "Balanced Intraday";
+  const useIntegratedRsiPane = supportsIntegratedRsiPane && config.outputMode === "indicator";
 
   if (!useIntegratedRsiPane) return code;
 
   const declaration = `indicator("${config.name}", overlay=true, max_labels_count=500, max_lines_count=500)`;
   const paneDeclaration = `indicator("${config.name}", overlay=false, max_labels_count=500, max_lines_count=500)`;
   if (!code.includes(declaration)) {
-    throw new Error("Compiler transform anchor missing: Fast EMA Scalper indicator declaration");
+    throw new Error("Compiler transform anchor missing: integrated RSI indicator declaration");
   }
   code = code.replace(declaration, paneDeclaration);
 
@@ -33,7 +34,7 @@ export function compilePine(config: StrategyConfig): string {
   if (config.execution.showDashboard) {
     const tablePattern = /var table dashboard = table\.new\(position\.top_right, 2, (\d+), border_width=1\)/;
     if (!tablePattern.test(code)) {
-      throw new Error("Compiler transform anchor missing: Fast EMA Scalper dashboard table");
+      throw new Error("Compiler transform anchor missing: integrated RSI dashboard table");
     }
     code = code.replace(
       tablePattern,
@@ -42,7 +43,7 @@ export function compilePine(config: StrategyConfig): string {
   }
 
   if (overlayVisuals === 0) {
-    throw new Error("Compiler transform anchor missing: Fast EMA Scalper overlay visuals");
+    throw new Error("Compiler transform anchor missing: integrated RSI overlay visuals");
   }
 
   const alertsAnchor = "// === Alerts ===";
