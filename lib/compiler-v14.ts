@@ -67,9 +67,9 @@ export function compilePine(config: StrategyConfig): string {
   }
 
   const divergencePane = `// === Integrated RSI divergence pane ===
-divRsiLength = input.int(14, "Divergence RSI period", minval=1)
-divPivotLeft = input.int(5, "Divergence pivot left", minval=1)
-divPivotRight = input.int(5, "Divergence pivot right", minval=1)
+divRsiLength = input.int(${config.momentum.rsiLength}, "Divergence RSI period", minval=1)
+divPivotLeft = input.int(${config.momentum.divergencePivot}, "Divergence pivot left", minval=1)
+divPivotRight = input.int(${config.momentum.divergencePivot}, "Divergence pivot right", minval=1)
 divRangeMinimum = input.int(5, "Divergence minimum pivot range", minval=1)
 divRangeMaximum = input.int(60, "Divergence maximum pivot range", minval=2)
 showRegularBullDiv = input.bool(true, "Show regular bullish divergence")
