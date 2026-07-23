@@ -23,6 +23,18 @@ function makeTrendCandles(count: number, start = 100, growth = 1.01): Candle[] {
   return candles;
 }
 
+function makeModerateTrendCandles(count: number): Candle[] {
+  const candles: Candle[] = [];
+  let base = 100;
+  for (let index = 0; index < count; index += 1) {
+    const open = base;
+    const close = open * 1.0005;
+    candles.push(candle(index, open, open * 1.0065, open * 0.9935, close));
+    base *= 1.001;
+  }
+  return candles;
+}
+
 function makeLowVolatilityTrend(count: number): Candle[] {
   const candles: Candle[] = [];
   let base = 100;
@@ -53,13 +65,59 @@ function makeBearishBreakoutFixture(): Candle[] {
 
 function buildEntryWithInitialStop(): { candles: Candle[]; stop: number } {
   const signalHistory = makeTrendCandles(200);
-  const signalResult = runRegimeTrendV1([
-    ...signalHistory,
-    candle(200, signalHistory[199].close, signalHistory[199].close * 1.002, signalHistory[199].close * 0.998, signalHistory[199].close)
-  ]);
+  const fill = candle(
+    200,
+    signalHistory[199].close,
+    signalHistory[199].close * 1.002,
+    signalHistory[199].close * 0.998,
+    signalHistory[199].close
+  );
+  const candles = [...signalHistory, fill];
+  const signalResult = runRegimeTrendV1(candles);
   expect(signalResult.openPosition).not.toBeNull();
   expect(signalResult.openPosition!.trailingActivated).toBe(false);
-  return { candles: signalHistory.concat(candle(200, signalHistory[199].close, signalHistory[199].close * 1.002, signalHistory[199].close * 0.998, signalHistory[199].close)), stop: signalResult.openPosition!.activeStop };
+  return { candles, stop: signalResult.openPosition!.activeStop };
+}
+
+function buildTrendExitFixture(): { candles: Candle[]; stop: number; fastEma: number } {
+  const history = makeModerateTrendCandles(199);
+  const previousHigh = Math.max(...history.slice(-20).map((item) => item.high));
+  const signalClose = previousHigh * 1.002;
+  const signal = candle(199, signalClose * 0.999, signalClose * 1.003, signalClose * 0.997, signalClose);
+  const fill = candle(200, signalClose, signalClose * 1.006, signalClose * 0.994, signalClose);
+  const candles = [...history, signal, fill];
+  const result = runRegimeTrendV1(candles);
+
+  expect(result.signals).toHaveLength(1);
+  expect(result.openPosition).not.toBeNull();
+  expect(result.openPosition!.trailingActivated).toBe(false);
+
+  const fastEma = ema(candles.map((item) => item.close), 50).at(-1) as number;
+  const stop = result.openPosition!.activeStop;
+  expect(stop).toBeLessThan(fastEma);
+
+  return { candles, stop, fastEma };
+}
+
+function appendTrendExitTrigger(fixture: { candles: Candle[]; stop: number; fastEma: number }): Candle[] {
+  const triggerClose = (fixture.stop + fixture.fastEma) / 2;
+  expect(triggerClose).toBeGreaterThan(fixture.stop);
+  expect(triggerClose).toBeLessThan(fixture.fastEma);
+
+  const triggerLow = (fixture.stop + triggerClose) / 2;
+  const trigger = candle(
+    201,
+    triggerClose * 1.002,
+    triggerClose * 1.004,
+    triggerLow,
+    triggerClose
+  );
+  const candles = [...fixture.candles, trigger];
+  const result = runRegimeTrendV1(candles);
+  expect(result.trades).toHaveLength(0);
+  expect(result.openPosition).not.toBeNull();
+  expect(result.openPosition!.trailingActivated).toBe(false);
+  return candles;
 }
 
 describe("Regime Trend v1 entry rejection gates", () => {
@@ -108,17 +166,13 @@ describe("Regime Trend v1 stop and exit ordering", () => {
   });
 
   it("executes a pending trend exit at the next open before inspecting that candle's later low", () => {
-    const fixture = buildEntryWithInitialStop();
-    const closes = fixture.candles.map((item) => item.close);
-    const ema50 = ema(closes, 50);
-    const fast = ema50[ema50.length - 1] as number;
-    const triggerClose = Math.max(fixture.stop * 1.1, fast * 0.99);
-    expect(triggerClose).toBeLessThan(fast);
-
-    const trigger = candle(201, triggerClose * 1.02, triggerClose * 1.03, Math.max(fixture.stop * 1.01, triggerClose * 0.99), triggerClose);
-    const exitOpen = Math.max(fixture.stop * 1.05, triggerClose * 0.995);
-    const exitBar = candle(202, exitOpen, exitOpen * 1.01, fixture.stop * 0.95, exitOpen * 0.99);
-    const result = runRegimeTrendV1([...fixture.candles, trigger, exitBar]);
+    const fixture = buildTrendExitFixture();
+    const triggeredCandles = appendTrendExitTrigger(fixture);
+    const pendingResult = runRegimeTrendV1(triggeredCandles);
+    const activeStop = pendingResult.openPosition!.activeStop;
+    const exitOpen = activeStop * 1.05;
+    const exitBar = candle(202, exitOpen, exitOpen * 1.01, activeStop * 0.95, exitOpen * 0.99);
+    const result = runRegimeTrendV1([...triggeredCandles, exitBar]);
 
     expect(result.trades).toHaveLength(1);
     expect(result.trades[0].exit_reason).toBe("trend_exit");
@@ -127,14 +181,14 @@ describe("Regime Trend v1 stop and exit ordering", () => {
   });
 
   it("gives a gap stop priority when the pending trend-exit candle opens below the active stop", () => {
-    const fixture = buildEntryWithInitialStop();
-    const closes = fixture.candles.map((item) => item.close);
-    const fast = ema(closes, 50).at(-1) as number;
-    const triggerClose = Math.max(fixture.stop * 1.1, fast * 0.99);
-    const trigger = candle(201, triggerClose * 1.02, triggerClose * 1.03, Math.max(fixture.stop * 1.01, triggerClose * 0.99), triggerClose);
-    const gapOpen = fixture.stop * 0.97;
+    const fixture = buildTrendExitFixture();
+    const triggeredCandles = appendTrendExitTrigger(fixture);
+    const pendingResult = runRegimeTrendV1(triggeredCandles);
+    expect(pendingResult.openPosition!.trailingActivated).toBe(false);
+    const activeStop = pendingResult.openPosition!.activeStop;
+    const gapOpen = activeStop * 0.97;
     const exitBar = candle(202, gapOpen, gapOpen * 1.02, gapOpen * 0.99, gapOpen * 1.01);
-    const result = runRegimeTrendV1([...fixture.candles, trigger, exitBar]);
+    const result = runRegimeTrendV1([...triggeredCandles, exitBar]);
 
     expect(result.trades).toHaveLength(1);
     expect(result.trades[0].exit_reason).toBe("initial_stop");
