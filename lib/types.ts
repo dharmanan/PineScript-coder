@@ -9,9 +9,22 @@ export type SpotExitMode = "trend_break" | "ema_cross" | "rsi_overbought" | "htf
 export type VisualProfile = "clean" | "enhanced" | "advanced";
 export type SessionTimezone = "exchange" | "America/New_York" | "Europe/London" | "Europe/Istanbul" | "UTC";
 export type ResearchProfile = "bnb_30m_ema_confirmed_regular_divergence_v1";
+export type PresetId =
+  | "custom"
+  | "balanced_intraday"
+  | "fast_ema_scalper"
+  | "vwap_session_trader"
+  | "swing_trend_4h"
+  | "spot_accumulation"
+  | "supertrend_volume"
+  | "breakout_momentum"
+  | "rsi_divergence_reversal"
+  | "selective_multi_timeframe"
+  | "long_term_trend_guard";
 
 export interface StrategyConfig {
   name: string;
+  presetId?: PresetId;
   style: TradingStyle;
   direction: Direction;
   outputMode: OutputMode;
