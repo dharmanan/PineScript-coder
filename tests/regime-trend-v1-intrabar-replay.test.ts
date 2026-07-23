@@ -21,7 +21,7 @@ function trade(overrides = {}) {
     exit_timestamp: FOUR_HOURS,
     raw_exit_reference: 95,
     exit_fill: 94.9525,
-    exit_reason: "initial_stop",
+    exit_reason: "trend_exit",
     quantity: 0.01,
     entry_fee: 0.001,
     exit_fee: 0.000949525,
@@ -49,8 +49,16 @@ function map(candles: ReturnType<typeof candle>[]) {
   return new Map(candles.map((item) => [item.timestamp, item]));
 }
 
+function flatCandles(start: number, endExclusive: number) {
+  const candles = [];
+  for (let timestamp = start; timestamp < endExclusive; timestamp += FIVE) {
+    candles.push(candle(timestamp));
+  }
+  return candles;
+}
+
 describe("Regime Trend v1 5m intrabar replay", () => {
-  it("exits immediately when target is reached before stop", () => {
+  it("exits immediately when target is reached before a trend exit", () => {
     const candles = map([
       candle(0),
       candle(FIVE, { high: 106, low: 99 })
@@ -61,7 +69,7 @@ describe("Regime Trend v1 5m intrabar replay", () => {
     expect(result.lower_trade.net_pnl).toBeGreaterThan(0);
   });
 
-  it("exits at stop when stop is reached before target", () => {
+  it("exits at stop when stop is reached before a trend exit", () => {
     const candles = map([
       candle(0),
       candle(FIVE, { high: 104, low: 89 })
@@ -88,7 +96,26 @@ describe("Regime Trend v1 5m intrabar replay", () => {
     expect(result.lower_trade).toEqual(result.upper_trade);
   });
 
-  it("activates a 4h stop update only at the next 4h open", () => {
+  it("includes the full baseline initial-stop exit candle", () => {
+    const exitTimestamp = FOUR_HOURS;
+    const candles = flatCandles(0, exitTimestamp + FOUR_HOURS);
+    const stopTimestamp = exitTimestamp + 3 * FIVE;
+    const stopCandle = candles.find((item) => item.timestamp === stopTimestamp);
+    if (!stopCandle) throw new Error("missing synthetic stop candle");
+    stopCandle.low = 89;
+
+    const result = replayTrade5m(
+      trade({ exit_timestamp: exitTimestamp, exit_reason: "initial_stop" }),
+      [],
+      map(candles),
+      2
+    );
+    expect(result.classification).toBe("STOP_FIRST");
+    expect(result.timestamp).toBe(stopTimestamp);
+    expect(result.active_stop).toBe(90);
+  });
+
+  it("activates a trailing stop update at the baseline stop-exit candle open", () => {
     const updatedStop = 99;
     const stopUpdates = [
       {
@@ -98,20 +125,30 @@ describe("Regime Trend v1 5m intrabar replay", () => {
         activeStop: updatedStop
       }
     ];
-    const path = [];
-    for (let timestamp = 0; timestamp < FOUR_HOURS; timestamp += FIVE) {
-      path.push(candle(timestamp, { low: 95 }));
-    }
-    path.push(candle(FOUR_HOURS, { low: 98, high: 102 }));
+    const candles = flatCandles(0, 2 * FOUR_HOURS);
+    const exitOpen = candles.find((item) => item.timestamp === FOUR_HOURS);
+    if (!exitOpen) throw new Error("missing synthetic exit-open candle");
+    exitOpen.low = 98;
 
     const result = replayTrade5m(
-      trade({ exit_timestamp: FOUR_HOURS + FIVE }),
+      trade({ exit_timestamp: FOUR_HOURS, exit_reason: "trailing_stop" }),
       stopUpdates,
-      map(path),
+      map(candles),
       2
     );
     expect(result.classification).toBe("STOP_FIRST");
     expect(result.timestamp).toBe(FOUR_HOURS);
     expect(result.active_stop).toBe(updatedStop);
+  });
+
+  it("flags a complete baseline stop candle with no target or stop as DATA_MISMATCH", () => {
+    const candles = flatCandles(0, 2 * FOUR_HOURS);
+    const result = replayTrade5m(
+      trade({ exit_timestamp: FOUR_HOURS, exit_reason: "initial_stop" }),
+      [],
+      map(candles),
+      2
+    );
+    expect(result.classification).toBe("DATA_MISMATCH");
   });
 });
