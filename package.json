@@ -14,7 +14,8 @@
     "research:backtest": "node research/regime-trend-v1/run-development-validation.mjs",
     "research:robustness": "node research/regime-trend-v1/run-robustness.mjs",
     "research:forensics": "node research/regime-trend-v1/run-forensic-diagnostics.mjs",
-    "research:exit-timing": "node research/regime-trend-v1/run-exit-timing.mjs"
+    "research:exit-timing": "node research/regime-trend-v1/run-exit-timing.mjs",
+    "research:profit-protection": "node research/regime-trend-v1/run-profit-protection.mjs"
   },
   "dependencies": {
     "next": "^15.5.21",
