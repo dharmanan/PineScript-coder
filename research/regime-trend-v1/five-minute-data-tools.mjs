@@ -99,6 +99,7 @@ export function parseArchiveCsv(csv) {
 export function validateArchiveCandles(candles, month) {
   const { start, endExclusive } = monthBounds(month);
   const gaps = [];
+  const preopenCloses = [];
   const shortenedCloses = [];
   const extendedCloses = [];
   let missingIntervalCount = 0;
@@ -124,9 +125,13 @@ export function validateArchiveCandles(candles, month) {
 
     const expectedClose = candle.timestamp + FIVE_MINUTES_MS - 1;
     if (candle.closeTime < candle.timestamp) {
-      throw new Error(`5m close time precedes open time at ${candle.timestamp}`);
-    }
-    if (candle.closeTime < expectedClose) {
+      preopenCloses.push({
+        open_time: candle.timestamp,
+        close_time: candle.closeTime,
+        expected_close_time: expectedClose,
+        precedes_open_by_ms: candle.timestamp - candle.closeTime
+      });
+    } else if (candle.closeTime < expectedClose) {
       shortenedCloses.push({
         open_time: candle.timestamp,
         close_time: candle.closeTime,
@@ -169,10 +174,12 @@ export function validateArchiveCandles(candles, month) {
     missing_interval_count: missingIntervalCount,
     leading_missing_intervals: leadingMissing,
     trailing_missing_intervals: trailingMissing,
-    irregular_close_count: shortenedCloses.length + extendedCloses.length,
+    irregular_close_count: preopenCloses.length + shortenedCloses.length + extendedCloses.length,
+    preopen_close_count: preopenCloses.length,
     shortened_close_count: shortenedCloses.length,
     extended_close_count: extendedCloses.length,
     gaps,
+    preopen_closes: preopenCloses,
     shortened_closes: shortenedCloses,
     extended_closes: extendedCloses
   };
