@@ -21,7 +21,8 @@
     "research:5m-replay": "node research/regime-trend-v1/run-intrabar-replay.mjs",
     "research:5m-ratchet": "node research/regime-trend-v1/run-target-triggered-ratchet.mjs",
     "research:5m-ratchet-corrected": "node research/regime-trend-v1/run-target-triggered-ratchet-corrected.mjs",
-    "research:rsi-divergence": "node research/rsi-divergence-reversal/run-research.mjs"
+    "research:rsi-divergence": "node research/rsi-divergence-reversal/run-research.mjs",
+    "research:rsi-divergence-improve": "node research/rsi-divergence-reversal/run-improvement-study.mjs"
   },
   "dependencies": {
     "next": "^15.5.21",
