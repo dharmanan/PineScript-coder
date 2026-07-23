@@ -8,7 +8,10 @@ const appendForceOverlay = (line: string): string => {
 
 export function compilePine(config: StrategyConfig): string {
   let code = compileBase(config);
-  const supportsIntegratedRsiPane = config.name === "Fast EMA Scalper" || config.name === "Balanced Intraday";
+  const supportsIntegratedRsiPane =
+    config.name === "Fast EMA Scalper" ||
+    config.name === "Balanced Intraday" ||
+    config.name === "VWAP Session Trader";
   const useIntegratedRsiPane = supportsIntegratedRsiPane && config.outputMode === "indicator";
 
   if (!useIntegratedRsiPane) return code;
