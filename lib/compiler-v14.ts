@@ -12,7 +12,8 @@ const rsiPanePresetNames = new Set([
   "VWAP Session Trader",
   "4H Swing Trend",
   "RSI Divergence Reversal",
-  "Spot Accumulation"
+  "Spot Accumulation",
+  "Breakout Momentum"
 ]);
 
 export function compilePine(config: StrategyConfig): string {
