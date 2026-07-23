@@ -12,11 +12,13 @@ export function compilePine(config: StrategyConfig): string {
     config.name === "Fast EMA Scalper" ||
     config.name === "Balanced Intraday" ||
     config.name === "VWAP Session Trader" ||
-    config.name === "RSI Divergence Reversal";
+    config.name === "RSI Divergence Reversal" ||
+    config.name === "4H Swing Trend";
   const useIntegratedRsiPane = supportsIntegratedRsiPane && config.outputMode === "indicator";
 
   if (!useIntegratedRsiPane) return code;
 
+  const showHiddenByDefault = config.name === "4H Swing Trend";
   const declaration = `indicator("${config.name}", overlay=true, max_labels_count=500, max_lines_count=500)`;
   const paneDeclaration = `indicator("${config.name}", overlay=false, max_labels_count=500, max_lines_count=500)`;
   if (!code.includes(declaration)) {
@@ -62,9 +64,9 @@ divPivotRight = input.int(5, "Divergence pivot right", minval=1)
 divRangeMinimum = input.int(5, "Divergence minimum pivot range", minval=1)
 divRangeMaximum = input.int(60, "Divergence maximum pivot range", minval=2)
 showRegularBullDiv = input.bool(true, "Show regular bullish divergence")
-showHiddenBullDiv = input.bool(false, "Show hidden bullish divergence")
+showHiddenBullDiv = input.bool(${showHiddenByDefault ? "true" : "false"}, "Show hidden bullish divergence")
 showRegularBearDiv = input.bool(true, "Show regular bearish divergence")
-showHiddenBearDiv = input.bool(false, "Show hidden bearish divergence")
+showHiddenBearDiv = input.bool(${showHiddenByDefault ? "true" : "false"}, "Show hidden bearish divergence")
 
 divRsi = ta.rsi(close, divRsiLength)
 divRegularBullColor = color.green
