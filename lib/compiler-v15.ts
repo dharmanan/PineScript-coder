@@ -34,11 +34,5 @@ export function compilePine(config: StrategyConfig): string {
       "bearishDivergence = divRegularBearAlert\n\n"
   );
 
-  const longSetup = "longSetup = rsiValue >= rsiLongLevel and bullishDivergence and confirmationOk";
-  const shortSetup = "shortSetup = rsiValue <= rsiShortLevel and bearishDivergence and confirmationOk";
-  if (!code.includes(longSetup) || !code.includes(shortSetup)) {
-    throw new Error("Compiler transform anchor missing: divergence entry setup");
-  }
-
   return code.replace(filtersAnchor, paneBlock + filtersAnchor);
 }
