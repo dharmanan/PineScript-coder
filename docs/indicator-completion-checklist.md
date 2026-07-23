@@ -21,10 +21,10 @@
 - [x] Fire LONG/SHORT alerts only when a new visual trade is actually accepted.
 - [x] Report accepted entries, rather than ignored repeat signals, in the dashboard.
 - [x] Remove the temporary `/rsi-companion` page, standalone companion generator and companion test.
+- [x] Add focused generator tests for all nine RSI-pane presets and verify Supertrend Volume remains panel-free.
 
 ## Remaining
 
-- [ ] Add focused generator tests for all nine RSI-pane presets and verify Supertrend Volume remains panel-free.
 - [ ] Verify main-chart routing for LONG/SHORT/BUY/EXIT labels, overlays, risk levels and dashboard on all affected presets.
 - [ ] Read RSI length and divergence pivot strength from each preset configuration instead of fixed panel defaults.
 - [ ] Decouple RSI-pane eligibility from the editable script name.
