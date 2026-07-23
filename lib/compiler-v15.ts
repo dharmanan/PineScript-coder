@@ -3,13 +3,16 @@ import type { StrategyConfig } from "./types";
 
 export function compilePine(config: StrategyConfig): string {
   let code = compileBase(config);
-  const alignDivergenceEntries = config.name === "RSI Divergence Reversal" && config.outputMode === "indicator";
-
-  if (!alignDivergenceEntries) return code;
-
   const paneAnchor = "// === Integrated RSI divergence pane ===";
   const filtersAnchor = "// === Filters and triggers ===";
   const alertsAnchor = "// === Alerts ===";
+  const alignDivergenceEntries =
+    config.outputMode === "indicator" &&
+    config.momentum.divergenceEnabled &&
+    code.includes(paneAnchor);
+
+  if (!alignDivergenceEntries) return code;
+
   const paneStart = code.indexOf(paneAnchor);
   const alertsStart = code.indexOf(alertsAnchor);
 
@@ -26,18 +29,16 @@ export function compilePine(config: StrategyConfig): string {
   }
   code = code.replace(
     legacyDivergencePattern,
-    "// Entry divergence is shared with the integrated RSI pane below.\n\n"
+    "// Entry divergence is shared with the integrated RSI pane below.\n" +
+      "bullishDivergence = divRegularBullAlert\n" +
+      "bearishDivergence = divRegularBearAlert\n\n"
   );
 
   const longSetup = "longSetup = rsiValue >= rsiLongLevel and bullishDivergence and confirmationOk";
   const shortSetup = "shortSetup = rsiValue <= rsiShortLevel and bearishDivergence and confirmationOk";
   if (!code.includes(longSetup) || !code.includes(shortSetup)) {
-    throw new Error("Compiler transform anchor missing: divergence reversal entry setup");
+    throw new Error("Compiler transform anchor missing: divergence entry setup");
   }
-
-  code = code
-    .replace(longSetup, "longSetup = rsiValue >= rsiLongLevel and divRegularBullAlert and confirmationOk")
-    .replace(shortSetup, "shortSetup = rsiValue <= rsiShortLevel and divRegularBearAlert and confirmationOk");
 
   return code.replace(filtersAnchor, paneBlock + filtersAnchor);
 }
