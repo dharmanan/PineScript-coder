@@ -55,6 +55,33 @@ describe("RSI pane preset coverage", () => {
     expect(code).not.toContain('divPivotRight = input.int(5, "Divergence pivot right"');
   });
 
+  it("keeps the RSI pane after the editable script name changes", () => {
+    const config = findPreset("Balanced Intraday");
+    config.outputMode = "indicator";
+    config.name = "My Renamed Indicator";
+
+    const code = compilePine(config);
+
+    expect(config.presetId).toBe("balanced_intraday");
+    expect(code).toContain('indicator("My Renamed Indicator", overlay=false');
+    expect(code).toContain("// === Integrated RSI divergence pane ===");
+  });
+
+  it("keeps RSI Divergence Reversal refinements after the script name changes", () => {
+    const config = findPreset("RSI Divergence Reversal");
+    config.outputMode = "indicator";
+    config.name = "My Divergence Indicator";
+    config.momentum.rsiLength = 21;
+
+    const code = compilePine(config);
+
+    expect(config.presetId).toBe("rsi_divergence_reversal");
+    expect(code).toContain('indicator("My Divergence Indicator", overlay=false');
+    expect(code).toContain("// Divergence reuses the main RSI period and source.");
+    expect(code).toContain("divRsi = rsiValue");
+    expect(code).not.toContain('divRsiLength = input.int(21, "Divergence RSI period"');
+  });
+
   it("keeps Supertrend Volume panel-free while RSI and divergence are disabled", () => {
     const config = findPreset("Supertrend Volume");
     config.outputMode = "indicator";
