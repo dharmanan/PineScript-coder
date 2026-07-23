@@ -6,6 +6,7 @@ const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 export function legacyRsiConfig(outputMode: StrategyConfig["outputMode"]): StrategyConfig {
   const config = clone(defaultConfig);
   config.name = "RSI Divergence Reversal";
+  config.presetId = "rsi_divergence_reversal";
   config.outputMode = outputMode;
   config.entryTrigger = "trend_state";
   config.trend.emaEnabled = false;
