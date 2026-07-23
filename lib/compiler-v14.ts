@@ -11,11 +11,8 @@ const rsiPanePresetNames = new Set([
   "Fast EMA Scalper",
   "VWAP Session Trader",
   "4H Swing Trend",
-  "Spot Accumulation",
-  "Breakout Momentum",
   "RSI Divergence Reversal",
-  "Selective Multi-Timeframe",
-  "Long-Term Trend Guard"
+  "Spot Accumulation"
 ]);
 
 export function compilePine(config: StrategyConfig): string {
