@@ -52,6 +52,7 @@ export const defaultConfig: StrategyConfig = {
   },
   risk: {
     stopMode: "atr",
+    stopTrigger: "wick",
     atrLength: 14,
     atrMultiple: 2,
     stopPercent: 1.5,
