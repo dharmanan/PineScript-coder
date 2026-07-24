@@ -3,6 +3,7 @@ export type Direction = "long_short" | "long_only" | "spot_buy_exit";
 export type OutputMode = "indicator" | "strategy";
 export type Sensitivity = "frequent" | "balanced" | "selective";
 export type StopMode = "atr" | "percent" | "swing" | "none";
+export type StopTrigger = "wick" | "close";
 export type TakeProfitMode = "risk_reward" | "percent" | "opposite_signal" | "none";
 export type EntryTrigger = "trend_state" | "ema_cross" | "pullback_reclaim" | "vwap_reclaim" | "supertrend_flip" | "breakout";
 export type SpotExitMode = "trend_break" | "ema_cross" | "rsi_overbought" | "htf_bearish" | "combined";
@@ -75,6 +76,7 @@ export interface StrategyConfig {
   };
   risk: {
     stopMode: StopMode;
+    stopTrigger: StopTrigger;
     atrLength: number;
     atrMultiple: number;
     stopPercent: number;
