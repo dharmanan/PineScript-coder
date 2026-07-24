@@ -1,4 +1,4 @@
-import { compilePine as compileBase } from "./compiler-v19";
+import { compilePine as compileBase } from "./compiler-v22";
 import { toPublicIndicatorConfig } from "./public-indicator-config";
 import type { StrategyConfig } from "./types";
 
