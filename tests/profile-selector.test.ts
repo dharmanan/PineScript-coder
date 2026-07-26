@@ -101,6 +101,22 @@ describe("profile selector", () => {
         expect(code).toContain('? "MONEY" : profileMode == ');
       });
 
+      // The routed inputs keep showing their own defaults while a profile overrides them,
+      // so the settings panel displays a reward the script is not using. Without this the
+      // only way to know the active value is to guess from the hit rate.
+      it("reports the risk/reward actually in force", () => {
+        expect(code).toContain('+ "  ·  rr " + str.tostring(riskReward, "#.##")');
+      });
+
+      // `+` binds tighter than `?:` in Pine, so an unparenthesised name would append the
+      // reward to the CUSTOM branch only and the other two would show a bare label.
+      it("appends the reward to every branch, not just the last", () => {
+        const row = code.split("\n").find((line) => line.includes('"  ·  rr "'));
+        expect(row).toBeDefined();
+        expect(row).toContain('(profileMode == ');
+        expect(row).toContain('"CUSTOM") + "  ·  rr "');
+      });
+
       it("keeps the chart timeframe, so switching profiles never asks for a different chart", () => {
         expect(code).toContain(`expectedChartTimeframe = input.timeframe("${preset.chartTimeframe}"`);
       });
@@ -128,6 +144,15 @@ describe("profile selector", () => {
         winRate: {
           signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 10,
           riskReward: 1.25, breakEvenAtR: 0, trailStartR: 0, trailDistanceR: 1
+        }
+      },
+      // Money profile unchanged; win-rate profile moved to reward 1.5 without a trailing
+      // stop after it beat reward 2 on three of four symbols on the chart.
+      fast_ema_scalper: {
+        money: { riskReward: 6, breakEvenAtR: 1, trailStartR: 0 },
+        winRate: {
+          signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 5,
+          riskReward: 1.5, breakEvenAtR: 0, trailStartR: 0, trailDistanceR: 1
         }
       }
     };

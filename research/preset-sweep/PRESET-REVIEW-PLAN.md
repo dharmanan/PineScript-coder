@@ -5,7 +5,7 @@ geçmek için. Bir preset kilitlendikten sonra o preset'e dokunulmaz — yeni bi
 tekrar açmayı gerektirirse, o karar ayrıca konuşulur.
 
 **Son güncelleme:** 26 Temmuz 2026
-**Kilitlenen:** 1 / 9 ölçülebilir preset
+**Kilitlenen:** 2 / 9 ölçülebilir preset
 
 ---
 
@@ -34,8 +34,8 @@ sayıları ölçümle uyuştuktan sonra kilitlenir.
 | # | Preset | İşlem/ay | Durum |
 |---|---|---|---|
 | 1 | Balanced Intraday | 5.7 | **KİLİTLENDİ** ✓ |
-| 2 | Fast EMA Scalper | 21.5 | **SIRADA** |
-| 3 | Supertrend Volume | 10.5 | bekliyor |
+| 2 | Fast EMA Scalper | 21.5 | **KİLİTLENDİ** ✓ |
+| 3 | Supertrend Volume | 10.5 | **SIRADA** |
 | 4 | Breakout Momentum | 6.6 | bekliyor |
 | 5 | VWAP Session Trader | 7.1 | bekliyor |
 | 6 | 4H Swing Trend | 2.2 | bekliyor |
@@ -174,12 +174,69 @@ bölümde.
 
 ---
 
-## 2. Fast EMA Scalper — SIRADA
+## 2. Fast EMA Scalper — ✅ KİLİTLENDİ (26 Temmuz 2026)
 
 `fast_ema_scalper` · 30 dakika · tetikleyici penceresi 5 · ATR×1.5
 
+- **Para profili:** risk/ödül 6, başabaş 1R — *değişmedi*
+- **İsabet profili:** risk/ödül **1.5**, trailing **yok** — *inceleme sonucu değişti*
+
+### İncelemede ne yapıldı
+
+1. Dört sembolde iki profil grafikte okundu, panel ölçümle karşılaştırıldı — uydu.
+2. Risk/ödül 1.25 denendi, üç ölçütte de para profilinin gerisinde kaldı.
+3. Preset "değişiklik yok" diye kilitlendi.
+4. Sonra risk/ödül 1.5 ölçümü fark edildi (ölçülmüştü ama test listesine konmamıştı),
+   grafikte denendi, **kilit gerekçeli olarak açıldı** ve isabet profili ona çevrildi.
+5. %63–68 isabet iddiası ayrıca kovalandı ve açıklandı (aşağıda).
+
+### Kilitleme öncesi ve sonrası (TradingView paneli)
+
+| Sembol | Eski isabet profili (rr 2 + trailing) | **Yeni (rr 1.5, trailing yok)** |
+|---|---|---|
+| BTC | %41.7 · **−7.42R** | %43.7 · **+8.34R** |
+| SOL | %44.4 · +8.95R | %44.1 · **+12.47R** |
+| BNB | %34.0 · −32.28R | %35.0 · **−26.17R** |
+| ETH | %49.3 · +30.58R | %49.0 · +27.3R |
+| **Toplam** | **−0.17R** | **+21.94R** |
+
+Artıda olan sembol sayısı ikiden üçe çıktı. BNB hâlâ zararda.
+
+### Aranan %63–68 isabet: bulundu, ama para yok
+
+Fast EMA Scalper, grafik × ödül hedefi, 2026 Ocak–Haziran:
+
+| Grafik | rr | İsabet | Beklenti | Artıda sembol |
+|---|---|---|---|---|
+| 5dk | 0.5 | **%63.3** | −0.141R | 0/4 |
+| 15dk | 0.5 | **%65.8** | −0.058R | 0/4 |
+| 30dk | 0.5 | **%67.9** | −0.012R | 2/4 |
+| 30dk | 1.5 | %43.5 | **+0.056R** | 3/4 |
+
+Başabaş isabet `1/(1+rr)` — risk/ödül 0.5'te **%66.7.** Yani %63–68 isabet gerçek ama
+eşiğin ya altında ya da yarım puan üstünde, komisyon o farkı siliyor. **İsabeti yükseltmek
+kârı yükseltmiyor: hedefi düşürdükçe geçilmesi gereken eşik de aynı hızda yükseliyor.**
+
+Ayrıca 5 dakika her ödül hedefinde 30 dakikadan kötü (rr 1.5'te −0.087R'ye karşı +0.056R).
+Sebebi komisyon: aynı dönemde 5 dakikada 2503, 30 dakikada 591 işlem açılıyor, komisyon
+işlem başına sabit.
+
+### Kilit nasıl korunuyor
+
+`tests/profile-selector.test.ts` içindeki `locked presets` bölümü. Kilit bu preset'te
+gerçekten iş gördü: rr 1.5 değişikliği testi kırdı, gerekçe yazıldıktan sonra güncellendi.
+
+### Açık kalan not
+
+BNB dört ayarın hiçbirinde artıya geçmedi. Bu preset ETH ve SOL ile yaşıyor, BTC masrafını
+çıkarıyor, BNB zarar ettiriyor.
+
+---
+
+## Eski ölçüm kaydı — Fast EMA Scalper (kilitleme öncesi)
+
 - **Para profili:** risk/ödül 6, başabaş 1R
-- **İsabet profili:** risk/ödül 2, trailing 1.5/1, pencere 5
+- **Eski isabet profili:** risk/ödül 2, trailing 1.5/1, pencere 5
 
 | Dönem | Para profili | İsabet profili |
 |---|---|---|

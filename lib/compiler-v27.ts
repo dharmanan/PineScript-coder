@@ -102,7 +102,13 @@ function withProfileRow(code: string, config: StrategyConfig): string {
   const lastCell = cells[cells.length - 1];
   const row = Math.max(...cells.map((cell) => Number(cell[1]))) + 1;
   const style = "bgcolor=color.new(color.rgb(15, 23, 42), 8), text_size=size.normal";
-  const value = `profileMode == "${MONEY}" ? "MONEY" : profileMode == "${WIN_RATE}" ? "WIN RATE" : "CUSTOM"`;
+  // The routed inputs still display their own default while a profile overrides them, so
+  // the settings panel shows a reward the script is not using. The dashboard reports the
+  // value actually in force, which is the only place it can be read without guessing.
+  // Parenthesised: `+` binds tighter than `?:`, so without them the reward would be
+  // appended to the CUSTOM branch alone and the other two would read as a bare name.
+  const name = `(profileMode == "${MONEY}" ? "MONEY" : profileMode == "${WIN_RATE}" ? "WIN RATE" : "CUSTOM")`;
+  const value = `${name} + "  ·  rr " + str.tostring(riskReward, "#.##")`;
 
   const grown = code.replace(
     /var table dashboard = table\.new\(position\.top_right, 2, (\d+), border_width=1(, force_overlay=true)?\)/,

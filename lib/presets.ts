@@ -49,9 +49,27 @@ export const presets: StrategyConfig[] = [
     risk: { ...defaultConfig.risk, riskReward: 5 },
     winRateProfile: winRate({ triggerWindow: 10, riskReward: 1.25, trailStartR: 0 })
   }),
-  // holdout 2026: 517 trades, 12.0% win, +0.104R per trade
-  // Win-rate profile, holdout 2026: 559 trades, 43.8% win, +0.032R. Hit rate more than
-  // doubles, the money nearly disappears.
+  // LOCKED 26 July 2026 — reviewed on all four symbols in TradingView across four reward
+  // targets, panel figures matched the measurement on every symbol.
+  // See research/preset-sweep/PRESET-REVIEW-PLAN.md
+  //
+  // Money profile unchanged at reward 6: positive on ETH, BTC and SOL, only -0.038R on BNB.
+  //
+  // Win-rate profile moved from reward 2 with a trailing stop to reward 1.5 without one.
+  // On the chart, across the same window: BTC -7.42R to +8.34R, SOL +8.95R to +12.47R,
+  // BNB -32.28R to -26.17R, ETH +30.58R to +27.3R. Net across the four symbols went from
+  // -0.17R to +21.94R, and the count of symbols in profit from two to three.
+  //
+  // Rewards 1.25 and 0.5 were also measured and rejected. 0.5 reaches a 63-68% hit rate,
+  // which is the number this preset was remembered for — but break-even at that target is
+  // 66.7%, so it loses money on all four symbols. Hit rate and the bar it has to clear move
+  // together; only the gap between them pays.
+  //
+  // What this preset is: the busiest in the set at 21.5 trades per symbol per month, sitting
+  // a few points from break-even at every reward target. ETH and SOL carry it; BTC covers
+  // its costs and BNB does not.
+  //   money profile, holdout 2026:    519 trades, 11.9% win, +0.103R
+  //   win-rate profile, holdout 2026: 563 trades, 43.5% win, +0.056R, three symbols positive
   preset({
     presetId: "fast_ema_scalper", name: "Fast EMA Scalper", style: "scalp",
     chartTimeframe: "30", triggerWindow: 5, entryTrigger: "ema_cross",
@@ -60,7 +78,7 @@ export const presets: StrategyConfig[] = [
     volume: { ...defaultConfig.volume, multiplier: 1.2 },
     risk: { ...defaultConfig.risk, atrMultiple: 1.5, riskReward: 6, breakEvenAtR: 1 },
     execution: { ...defaultConfig.execution, cooldownBars: 3 },
-    winRateProfile: winRate({ triggerWindow: 5 })
+    winRateProfile: winRate({ triggerWindow: 5, riskReward: 1.5, trailStartR: 0 })
   }),
   // holdout 2026: 180 trades, -0.264R per trade. Measured and did NOT hold.
   // Win-rate profile, holdout 2026: 210 trades, 37.6% win, -0.020R. Closer to break-even
