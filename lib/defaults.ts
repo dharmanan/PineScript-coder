@@ -8,6 +8,9 @@ export const defaultConfig: StrategyConfig = {
   outputMode: "indicator",
   chartTimeframe: "15",
   sensitivity: "balanced",
+  signalMode: "all_filters",
+  scoreThreshold: 60,
+  triggerWindow: 1,
   entryTrigger: "pullback_reclaim",
   spotExitMode: "combined",
   confirmedBarsOnly: true,
@@ -19,6 +22,10 @@ export const defaultConfig: StrategyConfig = {
     blockCounterTrend: true,
     closedBarOnly: true
   },
+  // The default stays the higher-timeframe average: swing structure only replaced it on the
+  // one preset where development, validation and holdout all agreed it was better.
+  biasSource: "higher_timeframe",
+  swingLookback: 3,
   trend: {
     emaEnabled: true,
     emaFast: 20,
@@ -60,8 +67,9 @@ export const defaultConfig: StrategyConfig = {
     takeProfitMode: "risk_reward",
     riskReward: 2,
     takeProfitPercent: 3,
-    trailingEnabled: false,
-    breakEvenEnabled: false
+    breakEvenAtR: 0,
+    trailStartR: 0,
+    trailDistanceR: 1
   },
   execution: {
     cooldownBars: 5,
@@ -74,11 +82,14 @@ export const defaultConfig: StrategyConfig = {
     showBackground: true,
     enforceChartTimeframe: true
   },
+  // Advanced by default: the signal score, setup colours and trend ribbon are what make the
+  // chart readable, and having to switch to them on every generated script was pure friction.
+  // Presentation only — the signal rules are identical in all three.
   visual: {
-    profile: "clean",
-    colorBars: false,
-    showSignalScore: false,
+    profile: "advanced",
+    colorBars: true,
+    showSignalScore: true,
     showRiskOutcomeLabels: true,
-    showTrendRibbon: false
+    showTrendRibbon: true
   }
 };

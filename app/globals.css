@@ -32,6 +32,10 @@ input:focus,select:focus,textarea:focus { border-color:var(--accent); }
 .three { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .summary p { border-left:2px solid #35445f; padding-left:14px; }
 .notice { margin-top:20px; padding:14px; border-radius:12px; background:#171e2b; color:#b8c3d4; line-height:1.5; }
+/* The profile choice sits between the preset grid and the settings it changes, so it is
+   boxed to read as a property of the preset rather than one more control among many. */
+.profile-choice { margin:18px 0; padding:14px; border:1px solid #36537e; border-radius:12px; background:#101d31; }
+.profile-choice .notice { margin-top:12px; padding:0; background:none; font-size:13px; }
 .code-head { display:flex; align-items:center; justify-content:space-between; gap:20px; }
 pre { background:#070a0f; border:1px solid var(--line); border-radius:13px; padding:20px; overflow:auto; color:#d9e6f5; line-height:1.55; font-size:13px; white-space:pre; }
 .ai-panel textarea { min-height:180px; margin:14px 0; resize:vertical; }

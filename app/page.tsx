@@ -69,6 +69,13 @@ export default function Home() {
     setConfig((current) => toPublicIndicatorConfig(applyVisualProfile(current, profile)));
   };
 
+  // Picking a profile is not editing the preset: both settings were measured together and
+  // both are compiled in, so this only decides which one the script opens with. The preset
+  // stays selected, unlike every other control here.
+  const chooseTradeProfile = (profile: StrategyConfig["activeProfile"]) => {
+    setConfig((current) => toPublicIndicatorConfig({ ...current, activeProfile: profile }));
+  };
+
   const download = () => {
     const blob = new Blob([code], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -118,6 +125,22 @@ export default function Home() {
             <div className="preset-grid">
               {presets.map((p) => <button className={selectedPreset === p.name ? "selected" : ""} key={p.name} onClick={() => choosePreset(p)}>{selectedPreset === p.name ? "✓ " : ""}{p.name}</button>)}
             </div>
+
+            {publicConfig.winRateProfile && (
+              <div className="profile-choice">
+                <SelectField
+                  label="Profile"
+                  value={publicConfig.activeProfile ?? "money"}
+                  onChange={(v) => chooseTradeProfile(v as StrategyConfig["activeProfile"])}
+                  options={[["money", "Money — fewer, larger wins"], ["win_rate", "Win rate — more, smaller wins"]]}
+                />
+                <p className="notice">
+                  Both settings were measured on the same data and both are compiled into the script.
+                  This picks the one it opens with; the other stays one dropdown away in the
+                  indicator&apos;s own settings, alongside a Custom option that hands every input back to you.
+                </p>
+              </div>
+            )}
 
             <Field label="Script name"><input value={publicConfig.name} onChange={(e) => setTop("name", e.target.value)} /></Field>
             <div className="two">

@@ -19,8 +19,10 @@ describe("RSI Divergence Reversal consistency", () => {
 
     expect(code).toContain("acceptedLongSignal = longSignal and riskDirection != 1");
     expect(code).toContain("acceptedShortSignal = shortSignal and riskDirection != -1");
-    expect(code).toContain("if acceptedLongSignal and riskDirection == 0\n    riskEntry := close");
-    expect(code).toContain("if acceptedShortSignal and riskDirection == 0\n    riskEntry := close");
+    expect(code).toContain("if acceptedLongSignal and riskDirection == 0\n    pendingDirection := 1");
+    expect(code).toContain("if acceptedShortSignal and riskDirection == 0\n    pendingDirection := -1");
+    expect(code).toContain("if longFillReady\n    riskEntry := longFillPrice");
+    expect(code).toContain("if shortFillReady\n    riskEntry := shortFillPrice");
     expect(code).toContain("oppositeSignalReversal =");
   });
 

@@ -17,8 +17,10 @@ describe("accepted indicator entry lifecycle", () => {
     expect(code).toContain("acceptedShortSignal = shortSignal and riskDirection != -1");
     expect(code).toContain("if acceptedLongSignal\n    label.new");
     expect(code).toContain("if acceptedShortSignal\n    label.new");
-    expect(code).toContain("if acceptedLongSignal and riskDirection == 0\n    riskEntry := close");
-    expect(code).toContain("if acceptedShortSignal and riskDirection == 0\n    riskEntry := close");
+    expect(code).toContain("if acceptedLongSignal and riskDirection == 0\n    pendingDirection := 1");
+    expect(code).toContain("if acceptedShortSignal and riskDirection == 0\n    pendingDirection := -1");
+    expect(code).toContain("if longFillReady\n    riskEntry := longFillPrice");
+    expect(code).toContain("if shortFillReady\n    riskEntry := shortFillPrice");
     expect(code).toContain('acceptedLongSignal ? "YES" : "WAIT"');
     expect(code).toContain('acceptedShortSignal ? "YES" : "WAIT"');
     expect(code).toContain('alertcondition(acceptedLongSignal, "Long signal"');

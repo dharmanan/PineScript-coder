@@ -40,19 +40,41 @@ export function explainConfig(c: StrategyConfig): string[] {
     : `The dashboard reports whether the chart matches ${plan.chartTimeframe}, but mismatched charts are not blocked.`);
   lines.push(`A new entry is triggered when ${plan.entry.trigger.label}; every selected filter must also agree.`);
 
+  const structuralBias = c.biasSource === "swing_structure";
+  const swingLookback = c.swingLookback;
+
+  // The structural gate gets its own paragraph below, so listing it again among the
+  // filters would state the same rule twice in different words.
   const filterLabels = plan.entry.filters
-    .filter((filter) => filter.id !== "confirmation")
+    .filter((filter) => filter.id !== "confirmation" && filter.id !== "structure_bias")
     .map((filter) => filter.label);
   if (filterLabels.length) lines.push(`Entries are filtered by ${filterLabels.join(", ")}.`);
 
+  // A config gating on swing structure has no higher-timeframe filter left in its plan, so
+  // describing one here would tell the reader about a rule the script does not apply.
+  const blocking = plan.mode === "long_short"
+    ? "Bearish bias blocks long signals and bullish bias blocks short signals."
+    : "Bearish bias blocks long or buy signals.";
+
+  if (structuralBias) {
+    lines.push(
+      `Direction comes from swing structure rather than a higher-timeframe average: the last two confirmed ` +
+      `${swingLookback}-bar pivot highs and lows are compared, and higher highs with higher lows read bullish. ` +
+      `A pivot is only confirmed once ${swingLookback} later candles have closed, so the bias never uses an ` +
+      `unfinished candle. ${blocking}`
+    );
+  }
+
+  // Still described when structure is in charge, because the script does compute and plot
+  // it — the reader needs to know it is context now, not a gate.
   if (plan.higherTimeframe) {
     const candle = plan.higherTimeframe.closedBarOnly ? "the last closed higher-timeframe candle" : "the developing higher-timeframe candle";
-    const blocking = plan.higherTimeframe.blocksCounterTrend
-      ? plan.mode === "long_short"
-        ? "Bearish bias blocks long signals and bullish bias blocks short signals."
-        : "Bearish bias blocks long or buy signals."
-      : "The bias is shown for context and does not block entries.";
-    lines.push(`The ${plan.higherTimeframe.timeframe} bias uses ${plan.higherTimeframe.method.toUpperCase()} ${plan.higherTimeframe.length} and reads ${candle}. ${blocking}`);
+    const note = plan.higherTimeframe.blocksCounterTrend
+      ? blocking
+      : structuralBias
+        ? "It is shown for context only; swing structure decides which side is allowed."
+        : "The bias is shown for context and does not block entries.";
+    lines.push(`The ${plan.higherTimeframe.timeframe} bias uses ${plan.higherTimeframe.method.toUpperCase()} ${plan.higherTimeframe.length} and reads ${candle}. ${note}`);
   }
 
   if (plan.spotExit) lines.push(`A spot exit is generated when ${plan.spotExit.label}. The script never creates short entries.`);

@@ -192,7 +192,16 @@ export function buildBehaviorPlan(c: StrategyConfig): BehaviorPlan {
     longExpression: "volume >= volumeAverage * volumeMultiplier",
     shortExpression: "volume >= volumeAverage * volumeMultiplier"
   });
-  if (c.higherTimeframe.enabled && c.higherTimeframe.blockCounterTrend) filters.push({
+  // Structure replaces the higher-timeframe gate rather than joining it: both answer the
+  // same question — which side is allowed — and stacking two directional vetoes would be a
+  // different, unmeasured configuration.
+  if (c.biasSource === "swing_structure") filters.push({
+    id: "structure_bias",
+    label: `swing structure bias from ${c.swingLookback}-bar pivots`,
+    longExpression: "structureBull",
+    shortExpression: "structureBear"
+  });
+  else if (c.higherTimeframe.enabled && c.higherTimeframe.blockCounterTrend) filters.push({
     id: "htf_bias",
     label: "higher-timeframe bias",
     longExpression: "htfBull",
@@ -226,7 +235,10 @@ export function buildBehaviorPlan(c: StrategyConfig): BehaviorPlan {
       method: c.higherTimeframe.method,
       length: c.higherTimeframe.length,
       closedBarOnly: c.higherTimeframe.closedBarOnly,
-      blocksCounterTrend: c.higherTimeframe.blockCounterTrend
+      // Structure took over the directional gate, so the higher timeframe is still computed
+      // and still shown, but it no longer blocks anything. Reporting otherwise would
+      // describe a rule the generated script does not apply.
+      blocksCounterTrend: c.biasSource === "swing_structure" ? false : c.higherTimeframe.blockCounterTrend
     } : undefined,
     risk: {
       enabled: c.risk.stopMode !== "none" || c.risk.takeProfitMode !== "none",

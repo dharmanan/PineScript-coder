@@ -15,7 +15,8 @@ describe("chart timeframe guard", () => {
 
     expect(code).toContain('expectedChartTimeframe = input.timeframe("240"');
     expect(code).toContain("chartTimeframeOk = timeframe.period == expectedChartTimeframe");
-    expect(code).toContain("chartTimeframeAllowed and longSetup");
+    expect(code).toContain("longSignal = chartTimeframeAllowed and");
+    expect(code).toContain('chartTimeframeAllowed and (signalMode == "Score" ? longScoreOk : longSetup)');
     expect(code).toContain('"Chart TF"');
     expect(code).toContain('"WRONG: " + expectedChartTimeframe');
   });
