@@ -107,6 +107,12 @@ const triggerPlan = (c: StrategyConfig): PlanTrigger => {
   }
 };
 
+// A window that starts at midnight and runs to the last minute of the day restricts nothing.
+// Pine's session parser only accepts hours 00-23, so 0000-2359 is how a full day is written and
+// 0000-2400 would be rejected; both are treated as open here so neither spelling misdescribes
+// itself.
+const coversWholeDay = (session: string): boolean => /^0000-(2359|2400)$/.test(session);
+
 const spotExitLabel = (mode: StrategyConfig["spotExitMode"]): string => {
   switch (mode) {
     case "trend_break": return "price crosses below the long moving average";
@@ -207,9 +213,14 @@ export function buildBehaviorPlan(c: StrategyConfig): BehaviorPlan {
     longExpression: "htfBull",
     shortExpression: "htfBear"
   });
+  // A session set to the whole day is still a live filter — it stays in the compiled script so
+  // the reader can narrow it — but calling it a restriction would describe a limit that is not
+  // being applied. VWAP Reclaim ships exactly that way: the inputs are there, the window is open.
   if (c.execution.sessionEnabled) filters.push({
     id: "session",
-    label: `inside exchange-time session ${c.execution.session}`,
+    label: coversWholeDay(c.execution.session)
+      ? "inside the trading session, which is set to every hour by default"
+      : `inside exchange-time session ${c.execution.session}`,
     longExpression: "sessionOk",
     shortExpression: "sessionOk"
   });

@@ -80,17 +80,48 @@ export const presets: StrategyConfig[] = [
     execution: { ...defaultConfig.execution, cooldownBars: 3 },
     winRateProfile: winRate({ triggerWindow: 5, riskReward: 1.5, trailStartR: 0 })
   }),
-  // holdout 2026: 180 trades, -0.264R per trade. Measured and did NOT hold.
-  // Win-rate profile, holdout 2026: 210 trades, 37.6% win, -0.020R. Closer to break-even
-  // than the money profile, but still not a preset that held out of sample.
+  // LOCKED 26 July 2026 — two structural changes and one exit change, read on the chart on all
+  // four symbols. The preset that was marked "measured and did NOT hold" is now the most
+  // consistent in the set. See research/preset-sweep/PRESET-REVIEW-PLAN.md
+  //
+  // This preset was marked "measured and did NOT hold": negative on all four symbols on the
+  // 2026 holdout, -0.240R per trade. The reason turned out to be the one setting its name is
+  // built around. It only traded a New York equities session, 09:30-16:00, while crypto trades
+  // every hour of every day, and that restriction had never been measured. It was throwing away
+  // half the trades and the half it kept was the worse half:
+  //   session on:  182 trades, -0.240R, 0 of 4 symbols positive
+  //   session off: 348 trades, +0.263R, 3 of 4 positive
+  // Raising the volume multiplier to 1.5 thins what is left and brings the fourth symbol over:
+  // 272 trades, +0.267R, 4 of 4, and better than the shipping settings in development and
+  // validation as well as the holdout.
+  //
+  // The win-rate profile keeps reward 4 but replaces the 1.5R/1R trail with a tight one that
+  // arms at 1R and follows half an R behind. That is what makes the profile deserve its name
+  // here: the hit rate goes from 43.3% to 56.4% and expectancy up with it, and it is the first
+  // configuration on this preset that is positive in July as well.
+  //
+  // Read on the chart, four symbols, Jan-Jul 2026: 446 trades, 56.3% win, +74.69R.
+  // BNB +0.069R, ETH +0.170R, SOL +0.284R, BTC +0.139R — the measurement had +0.070R on BNB.
+  //
+  // Renamed from "VWAP Session Trader": the name described a session restriction the preset no
+  // longer applies, and a preset name is the first thing the product tells a reader. What it
+  // does is reclaim VWAP, so that is what it is called.
+  //
+  // The session filter is kept rather than removed, with its window opened to the whole day.
+  // Switching it off would have deleted its inputs from the generated script — the compiler only
+  // emits them when a session is enabled (compiler-v2) — and a user who wants New York hours
+  // would have no way back. Measured to be identical to having no session at all, on all four
+  // periods: 1762 / 1700 / 272 / 34 trades and +0.283R / +0.146R / +0.267R / -0.120R either way.
+  // Pine's session parser only accepts hours 00-23, so the 24-hour window is spelled 0000-2359.
   preset({
-    presetId: "vwap_session_trader", name: "VWAP Session Trader", style: "intraday",
+    presetId: "vwap_session_trader", name: "VWAP Reclaim", style: "intraday",
     chartTimeframe: "60", triggerWindow: 3, entryTrigger: "vwap_reclaim",
     trend: { ...defaultConfig.trend, emaEnabled: true, emaFast: 9, emaSlow: 21, longMaEnabled: false, vwapEnabled: true },
     higherTimeframe: { ...defaultConfig.higherTimeframe, enabled: false },
+    volume: { ...defaultConfig.volume, multiplier: 1.5 },
     risk: { ...defaultConfig.risk, riskReward: 6 },
-    execution: { ...defaultConfig.execution, sessionEnabled: true, session: "0930-1600", sessionTimezone: "America/New_York" },
-    winRateProfile: winRate({ triggerWindow: 3, riskReward: 4 })
+    execution: { ...defaultConfig.execution, sessionEnabled: true, session: "0000-2359" },
+    winRateProfile: winRate({ triggerWindow: 3, riskReward: 4, trailStartR: 1, trailDistanceR: 0.5 })
   }),
   // The one preset where swing structure beat the daily average on all three partitions at
   // once, so it is the one preset that changed. Its daily EMA-200 gate turned after the

@@ -42,9 +42,13 @@ describe("profile selector", () => {
       const code = indicator(preset);
       const profile = preset.winRateProfile!;
 
-      it("offers all three profiles, defaulting to the one the preset ships with", () => {
+      // Every preset opens on the win-rate profile. Both are compiled in and the money profile
+      // is one dropdown away, so this is only about which one a reader meets first — and the
+      // money profile meets them somewhere between a 12% and a 25% hit rate, which reads as a
+      // broken indicator before it reads as a wide reward target.
+      it("offers all three profiles, defaulting to the win-rate one", () => {
         expect(code).toContain(
-          `profileMode = input.string("${MONEY}", "Profile", options=["${MONEY}", "${WIN_RATE}", "Custom (use inputs below)"])`
+          `profileMode = input.string("${WIN_RATE}", "Profile", options=["${MONEY}", "${WIN_RATE}", "Custom (use inputs below)"])`
         );
       });
 
@@ -175,6 +179,17 @@ describe("profile selector", () => {
           signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 3,
           riskReward: 1.25, breakEvenAtR: 0, trailStartR: 1, trailDistanceR: 0.5
         }
+      },
+      // Money profile unchanged at reward 6. The win-rate profile keeps reward 4 and replaces
+      // the 1.5R/1R trail with a tight 1R/0.5R one, which is what lifted its hit rate from
+      // 43.3% to 56.4% and made it positive in July. The structural half of the decision — the
+      // session window and the volume multiplier — is pinned separately below.
+      vwap_session_trader: {
+        money: { riskReward: 6, breakEvenAtR: 0, trailStartR: 0 },
+        winRate: {
+          signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 3,
+          riskReward: 4, breakEvenAtR: 0, trailStartR: 1, trailDistanceR: 0.5
+        }
       }
     };
 
@@ -216,14 +231,38 @@ describe("profile selector", () => {
       expect(code).toContain('adxThreshold = input.float(30,');
       expect(code).toContain('stopConfirmation = input.string("Candle close"');
     });
+
+    // VWAP Reclaim's review was also structural, and the session is the part most likely to be
+    // quietly undone: it reads like a harmless default. It is not. Restricted to New York equity
+    // hours this preset lost money on all four symbols (-0.240R); opened to the whole day it
+    // makes money on all four (+0.267R). The filter stays enabled so a user can narrow it, and
+    // its window stays open so the shipped behaviour is every hour.
+    it("keeps VWAP Reclaim's session open and its volume filter where the review put them", () => {
+      const preset = presets.find((item) => item.presetId === "vwap_session_trader") as StrategyConfig;
+      expect(preset.name).toBe("VWAP Reclaim");
+      expect(preset.execution.sessionEnabled).toBe(true);
+      expect(preset.execution.session).toBe("0000-2359");
+      expect(preset.volume.multiplier).toBe(1.5);
+
+      const code = indicator(preset);
+      expect(code).toContain('tradeSession = input.session("0000-2359"');
+      expect(code).toContain('volumeMultiplier = input.float(1.5,');
+      // The plain-language text must not call an open window a restriction.
+      expect(code).not.toContain("0930-1600");
+    });
   });
 
   describe("which profile the script opens with", () => {
     const preset = presets.find((item) => item.presetId === "breakout_momentum") as StrategyConfig;
 
-    it("defaults to money when nothing was chosen", () => {
+    it("defaults to the win-rate profile when nothing was chosen", () => {
       expect(preset.activeProfile).toBeUndefined();
-      expect(indicator(preset)).toContain(`profileMode = input.string("${MONEY}"`);
+      expect(indicator(preset)).toContain(`profileMode = input.string("${WIN_RATE}"`);
+    });
+
+    it("opens on the money profile when that was chosen", () => {
+      const code = indicator({ ...preset, activeProfile: "money" });
+      expect(code).toContain(`profileMode = input.string("${MONEY}"`);
     });
 
     it("opens on the win-rate profile when that was chosen", () => {

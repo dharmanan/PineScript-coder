@@ -70,7 +70,13 @@ export function compilePine(config: StrategyConfig): string {
   }
   if (!applied) return code;
 
-  code = insertSelector(code, config.activeProfile === "win_rate" ? WIN_RATE : MONEY);
+  // The win-rate profile is what a script opens with unless the author picked otherwise.
+  // Both are measured and both are compiled in, so this is only about which one a reader meets
+  // first — and the money profile meets them with a hit rate near 20%, which reads as a broken
+  // indicator long before it reads as a wide reward target. The reviewed presets bear that out:
+  // every one of the four locked so far has a win-rate profile clearing 49%, while their money
+  // profiles sit between 12% and 25%.
+  code = insertSelector(code, config.activeProfile === "money" ? MONEY : WIN_RATE);
   return withProfileRow(code, config);
 }
 

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compilePine } from "../lib/compiler";
 import { defaultConfig } from "../lib/defaults";
-import { presets } from "../lib/presets";
 import type { StrategyConfig } from "../lib/types";
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -23,12 +22,22 @@ describe("chart timeframe guard", () => {
 });
 
 describe("session timezone safety", () => {
-  it("generates the VWAP session preset in New York time", () => {
-    const preset = presets.find((item) => item.name === "VWAP Session Trader");
-    expect(preset).toBeDefined();
-    expect(preset?.execution.sessionTimezone).toBe("America/New_York");
+  // A session restriction means nothing without the timezone it is measured in: 09:30 is a
+  // different hour in New York than on the exchange, and getting that wrong silently trades
+  // the wrong window. Built here rather than taken from a preset — VWAP Session Trader was the
+  // only preset with a session and the review removed it, since the restriction cost it half
+  // its trades and kept the worse half. The feature stays in the product, so this stays too.
+  it("compiles a session in the timezone it was configured with", () => {
+    const preset: StrategyConfig = {
+      ...clone(defaultConfig),
+      outputMode: "indicator",
+      execution: {
+        ...clone(defaultConfig).execution,
+        sessionEnabled: true, session: "0930-1600", sessionTimezone: "America/New_York"
+      }
+    };
 
-    const code = compilePine(clone(preset!));
+    const code = compilePine(preset);
     expect(code).toContain('sessionTimezoneMode = input.string("America/New_York"');
     expect(code).toContain('options=["exchange", "America/New_York", "Europe/London", "Europe/Istanbul", "UTC"]');
     expect(code).toContain('sessionTimezone = sessionTimezoneMode == "exchange" ? syminfo.timezone : sessionTimezoneMode');

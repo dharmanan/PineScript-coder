@@ -6,7 +6,7 @@ import type { StrategyConfig } from "../lib/types";
 const rsiPanePresetNames = [
   "Balanced Intraday",
   "Fast EMA Scalper",
-  "VWAP Session Trader",
+  "VWAP Reclaim",
   "4H Swing Trend",
   "Spot Accumulation",
   "Breakout Momentum",
@@ -24,7 +24,7 @@ const hiddenEnabledPresetNames = [
 const hiddenDisabledPresetNames = [
   "Balanced Intraday",
   "Fast EMA Scalper",
-  "VWAP Session Trader",
+  "VWAP Reclaim",
   "Spot Accumulation",
   "Breakout Momentum",
   "RSI Divergence Reversal"

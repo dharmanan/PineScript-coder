@@ -80,7 +80,14 @@ export function explainConfig(c: StrategyConfig): string[] {
   if (plan.spotExit) lines.push(`A spot exit is generated when ${plan.spotExit.label}. The script never creates short entries.`);
   if (plan.execution.confirmedBarsOnly) lines.push("Long, short, buy and exit signals only finalize after the chart candle closes.");
   if (plan.execution.cooldownBars > 0) lines.push(`After a signal, a ${plan.execution.cooldownBars}-bar cooldown prevents duplicate entries in the same move.`);
-  if (plan.execution.session) lines.push(`Signals are restricted to the ${plan.execution.session} exchange-time session.`);
+  if (plan.execution.session) {
+    // A full-day window is a session filter that restricts nothing, so saying "restricted" would
+    // describe a limit the script is not applying. It stays in the settings either way, which is
+    // the part worth telling the reader.
+    lines.push(/^0000-(2359|2400)$/.test(plan.execution.session)
+      ? "A trading-session filter is available and set to every hour; narrow it in the indicator's settings to trade only part of the day."
+      : `Signals are restricted to the ${plan.execution.session} exchange-time session.`);
+  }
 
   if (plan.risk.enabled) {
     const parts = [plan.risk.stopLabel, plan.risk.targetLabel].filter((value): value is string => Boolean(value));

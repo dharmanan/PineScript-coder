@@ -130,7 +130,7 @@ export default function Home() {
               <div className="profile-choice">
                 <SelectField
                   label="Profile"
-                  value={publicConfig.activeProfile ?? "money"}
+                  value={publicConfig.activeProfile ?? "win_rate"}
                   onChange={(v) => chooseTradeProfile(v as StrategyConfig["activeProfile"])}
                   options={[["money", "Money — fewer, larger wins"], ["win_rate", "Win rate — more, smaller wins"]]}
                 />

@@ -20,10 +20,40 @@ import { buildSeries, buildSignals, simulate } from "./engine.mjs";
 const arg = (name, fallback) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;
 const target = arg("preset");
 if (!target) throw new Error("Usage: --preset=<presetId> [--partitions=july] [--window=N]");
-const base = presets.find((item) => item.presetId === target);
-if (!base) throw new Error(`Unknown preset: ${target}`);
-const profile = base.winRateProfile;
+const shipped = presets.find((item) => item.presetId === target);
+if (!shipped) throw new Error(`Unknown preset: ${target}`);
+const profile = shipped.winRateProfile;
 if (!profile) throw new Error(`Preset has no win-rate profile: ${target}`);
+
+// A win-rate profile only means something against a specific structure, and a structure that
+// is still a proposal has no business being written into lib/presets.ts to be measured. These
+// named patches let a candidate structure be measured before it is a product decision.
+const STRUCTURES = {
+  vwap_session_trader: {
+    "session-off": { execution: { sessionEnabled: false } },
+    "session-off+vol1.5": { execution: { sessionEnabled: false }, volume: { multiplier: 1.5 } },
+    "session-off+vol1.25": { execution: { sessionEnabled: false }, volume: { multiplier: 1.25 } }
+  }
+};
+
+const structureName = arg("structure");
+const patch = structureName ? STRUCTURES[target]?.[structureName] : null;
+if (structureName && !patch) {
+  throw new Error(
+    `Unknown structure "${structureName}" for ${target}. Available: ${Object.keys(STRUCTURES[target] ?? {}).join(", ") || "none"}`
+  );
+}
+const base = patch
+  ? {
+      ...shipped,
+      trend: { ...shipped.trend, ...(patch.trend ?? {}) },
+      momentum: { ...shipped.momentum, ...(patch.momentum ?? {}) },
+      volume: { ...shipped.volume, ...(patch.volume ?? {}) },
+      risk: { ...shipped.risk, ...(patch.risk ?? {}) },
+      execution: { ...shipped.execution, ...(patch.execution ?? {}) },
+      higherTimeframe: { ...shipped.higherTimeframe, ...(patch.higherTimeframe ?? {}) }
+    }
+  : shipped;
 
 const PARTITIONS = partitionsFor(arg("partitions", "july"));
 const PERIODS = Object.keys(PARTITIONS);
@@ -115,7 +145,8 @@ const line = (label, result) =>
   `  ${label.padEnd(26)} ${PERIODS.map((p) => cell(stat(result.totals[p]))).join(" | ")} | ${positives(result, holdoutKey)}/${usable(result, holdoutKey)}`;
 
 console.log(`${base.name} — ISABET PROFILI, mevcut yapiya karsi yeniden olculuyor`);
-console.log(`Yapi: ${base.chartTimeframe}dk · kirilma ${base.trend.breakoutLength} · ADX ${base.momentum.adxThreshold} · ATR×${base.risk.atrMultiple} · stop ${base.risk.stopTrigger}`);
+console.log(`Yapi${structureName ? ` (${structureName}, ÜRÜNDE DEGIL)` : " (urun)"}: ${base.chartTimeframe}dk · ATR×${base.risk.atrMultiple} · stop ${base.risk.stopTrigger}` +
+  ` · hacim ${base.volume.multiplier}x · seans ${base.execution.sessionEnabled ? base.execution.session : "yok"}`);
 console.log(`Mevcut isabet profili: rr ${profile.riskReward}, trail ${profile.trailStartR || "yok"}/${profile.trailDistanceR}, pencere ${profile.triggerWindow}`);
 console.log(`Pencere bu taramada: ${arg("window", profile.triggerWindow)} — Layout: ${PERIODS.join(" | ")}\n`);
 

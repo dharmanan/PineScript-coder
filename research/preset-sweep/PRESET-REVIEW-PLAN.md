@@ -2,7 +2,7 @@
 
 > ## Yeni oturum buradan başlar
 >
-> **Sıradaki iş:** VWAP Session Trader incelemesi (5. sıra, aşağıdaki tabloda).
+> **Sıradaki iş:** 4H Swing Trend incelemesi (6. sıra, aşağıdaki tabloda).
 >
 > **İlk üç komut:**
 > ```
@@ -10,7 +10,7 @@
 > /Users/kohen/bin/safe-npm test
 > /Users/kohen/bin/safe-npm run dev -- -H 0.0.0.0
 > ```
-> 737 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
+> 742 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
 >
 > **Commit bekleyen değişiklikler stage'de.** Kohen commit'i kendi atar; Claude
 > `git commit`, `push`, `pull`, `fetch`, `reset`, `rebase` çalıştırmaz. Stage için
@@ -70,7 +70,7 @@ geçmek için. Bir preset kilitlendikten sonra o preset'e dokunulmaz — yeni bi
 tekrar açmayı gerektirirse, o karar ayrıca konuşulur.
 
 **Son güncelleme:** 26 Temmuz 2026
-**Kilitlenen:** 4 / 9 ölçülebilir preset
+**Kilitlenen:** 5 / 9 ölçülebilir preset
 
 ---
 
@@ -102,8 +102,8 @@ sayıları ölçümle uyuştuktan sonra kilitlenir.
 | 2 | Fast EMA Scalper | 21.5 | **KİLİTLENDİ** ✓ |
 | 3 | Supertrend Volume | 10.5 | **KİLİTLENDİ** ✓ |
 | 4 | Breakout Momentum | 6.6 | **KİLİTLENDİ** ✓ |
-| 5 | VWAP Session Trader | 7.1 | **SIRADA** |
-| 6 | 4H Swing Trend | 2.2 | bekliyor |
+| 5 | VWAP Reclaim | 7.1 | **KİLİTLENDİ** ✓ |
+| 6 | 4H Swing Trend | 2.2 | **SIRADA** |
 | 7 | Selective Multi-Timeframe | 2.1 | bekliyor |
 | 8 | RSI Divergence Reversal | 5.3 | bekliyor |
 | 9 | Long-Term Trend Guard | 1.9 | bekliyor |
@@ -631,12 +631,128 @@ bölümde.
 
 ---
 
-## 5. VWAP Session Trader — bekliyor
+## 5. VWAP Reclaim — ✅ KİLİTLENDİ (26 Temmuz 2026)
 
-`vwap_session_trader` · 60 dakika · tetikleyici penceresi 3 · ATR×2
+*Eski adı: VWAP Session Trader. `presetId` değişmedi (`vwap_session_trader`) — diskteki tarama
+sonuçları ve bu dosya o kimliğe bağlı, değiştirmek ölçüm geçmişini kopartırdı.*
+
+`vwap_session_trader` · 60 dakika · **seans 24 saat** · **hacim 1.5x** · ATR×2 · pencere 3
+
+- **Para profili:** risk/ödül 6 — *değişmedi*
+- **İsabet profili:** risk/ödül 4, trailing **1R'de kurulur, 0.5R takip** — *değişti*
+
+### Bu preset "ölçümü geçemedi" diye duruyordu, sebebi kendi adıydı
+
+Eski notu şöyleydi: *"2026 Ocak-Haziran'da dört sembolde de zararda. Bu preset ölçümü geçemedi.
+Karar önerisi: üründen çıkarmak."*
+
+Sebep, aynı notta yazılıydı ama ölçülmemişti: *"Seans kısıtı var (New York 09:30-16:00) —
+kripto 7/24 işlem gördüğü için bu kısıt hiç ölçülmedi."*
+
+Ölçüldü. **Kısıt preset'i öldüren şeymiş.**
+
+| | İşlem | 2026 holdout | Artıda sembol |
+|---|---|---|---|
+| Seans AÇIK (NY 09:30-16:00) | 182 | **−0.240R** | **0/4** |
+| Seans KAPALI (7/24) | 348 | **+0.263R** | 3/4 |
+
+İşlemlerin **yarısını atıyordu ve attığı yarı daha iyiydi.** Kripto her saat işlem görürken
+New York borsa saatlerine hapsetmek, ölçülmemiş bir varsayımdı.
+
+### Hacim 1.5 dördüncü sembolü de artıya geçiriyor
+
+| Konfig | dev | val | holdout | Temmuz | Artıda |
+|---|---|---|---|---|---|
+| eski ürün | +0.262R | +0.106R | −0.240R | +0.702R | 0/4 |
+| seans yok | +0.201R | +0.102R | +0.263R | −0.200R | 3/4 |
+| **seans yok + hacim 1.5** | **+0.283R** ✓ | **+0.146R** ✓ | **+0.267R** ✓ | −0.120R | **4/4** |
+
+Üç dönemde eski ürünü geçiyor. Temmuz'da geçmiyor ama eski ürünün Temmuz'daki +0.702R'si **15
+işlemden** geliyor ve bu dosyanın kendi notu "anlamlı değil" diyor.
+
+### Seans kaldırılmadı, 24 saate açıldı
+
+`compiler-v2` seans girdilerini **sadece seans etkinken** üretiyor. Kapatmak, ayarları script'ten
+silmek demekti — New York saatlerini isteyen kullanıcının geri dönüşü olmazdı. O yüzden filtre
+etkin kaldı, penceresi `0000-2359` yapıldı.
+
+"24 saatlik seans = seans yok" iddiası ölçüldü, dört dönemde de **birebir aynı**:
+
+```
+seans 0000-2359 ACIK   1762t %26.3 +0.283R | 1700t %25.0 +0.146R | 272t %26.8 +0.267R | 34t %23.5 -0.120R
+seans yok              1762t %26.3 +0.283R | 1700t %25.0 +0.146R | 272t %26.8 +0.267R | 34t %23.5 -0.120R
+```
+
+Pine'ın seans ayrıştırıcısı sadece 00-23 saatlerini kabul ediyor, o yüzden 24 saatin dürüst
+yazımı `0000-2359`.
+
+### İsabet profili: ödül hedefi aynı, trailing değişti
+
+Yeni yapıya karşı altı çıkış şekli × altı ödül hedefi tarandı. Kazanan, ödül hedefini
+oynatmak **değil**, trailing'i sıkmak oldu:
+
+| Ayar | dev | val | **holdout** | Temmuz | Artıda |
+|---|---|---|---|---|---|
+| rr 4 + trail 1.5/1 (eski) | %43.4 · +0.121R | %41.3 · +0.093R | %43.3 · +0.163R | %44.0 · −0.088R | 4/4 |
+| **rr 4 + trail 1R/0.5R** | **%53.7** · +0.135R | **%50.5** · +0.083R | **%56.4** · **+0.184R** | **%56.4** · **+0.119R** | **4/4** |
+
+İsabet 13 puan yükseliyor, beklenti de yükseliyor, ve **Temmuz'da artıda** — bu preset için ilk kez.
+
+Ödül hedefi rr 4'te kaldı ama artık büyük ölçüde işlevsiz: işlemlerin çoğu 1R'de kurulan
+trailing'den çıkıyor, hedefe varmıyor.
+
+### Grafikte doğrulama (dört sembol, 2026 Ocak–Temmuz)
+
+| Sembol | Panel | Ölçüm (holdout) |
+|---|---|---|
+| BNB | 101t · %52.5 · **+0.069R** | **+0.070R** |
+| ETH | 107t · %56.1 · +0.170R | +0.177R |
+| SOL | 114t · %61.4 · +0.284R | +0.314R |
+| BTC | 124t · %54.8 · +0.139R | +0.167R |
+| **Toplam** | 446t · **%56.3** · **+74.69R** | %56.4 |
+
+İsabet **0.1 puan** farkla tuttu, BNB neredeyse birebir. Panelin 446 işlemi, ölçümün holdout
+392 + Temmuz 55 = 447'siyle örtüşüyor — okuma sırasında tarih üst sınırı daraltılmamıştı,
+yani Temmuz da içinde.
+
+### İsim değişti
+
+**VWAP Session Trader → VWAP Reclaim.** Seans kısıtı kalktığına göre eski isim, artık
+uygulanmayan bir kısıtı anlatıyordu. Preset ismi ürünün kullanıcıya verdiği ilk bilgi.
+
+Açıklama metni de düzeltildi: 24 saatlik bir seansı "kısıt" diye anlatmak yanlış olurdu.
+`lib/behavior-plan.ts` ve `lib/explain.ts` artık açık pencereyi *"a trading-session filter is
+available and set to every hour"* diye anlatıyor. İkisi de `0000-2359` ve `0000-2400`
+yazımlarını tanıyor.
+
+### Bu incelemede reddedilenler
+
+4 saatlik grafik (dev +0.478R, holdout +0.002R — Breakout Momentum'daki tuzağın aynısı),
+üst zaman dilimi açmak (holdout'ta en iyi ama BNB −0.590R), 30 dakikalık grafik (Temmuz'da
+tek artıda olan ama dev/val'de belirgin kötü), hacim 0.8/1.25, ATR 2.5/3.
+
+### Açık kalan not
+
+**Setin en tutarlı preset'i oldu.** 446 işlemde %56.3 isabet, dört sembolde de kârda, Temmuz'da
+bile artıda. "Üründen çıkarmak" önerilen preset, incelemeden sonra en iyisi çıktı.
+
+Bunu bulan şey ödül hedefi oynatmak değil, **hiç ölçülmemiş yapısal bir varsayımı ölçmek** oldu.
+Kural 7'nin neden var olduğunun en net örneği.
+
+### Kilit nasıl korunuyor
+
+`tests/profile-selector.test.ts` — `locked presets` bölümü iki profili, ayrı bir test de ismi,
+seansın açık olduğunu, pencerenin `0000-2359` olduğunu ve hacim çarpanını sabitliyor. Seans en
+kolay sessizce geri alınabilecek ayar, çünkü zararsız bir varsayılan gibi okunuyor. Değil.
+
+---
+
+## Eski ölçüm kaydı — VWAP Session Trader (kilitleme öncesi)
+
+`vwap_session_trader` · 60 dakika · seans NY 09:30-16:00 · hacim 1.0x · ATR×2 · pencere 3
 
 - **Para profili:** risk/ödül 6
-- **İsabet profili:** risk/ödül 4, trailing 1.5/1, pencere 3
+- **Eski isabet profili:** risk/ödül 4, trailing 1.5/1, pencere 3
 
 | Dönem | Para profili | İsabet profili |
 |---|---|---|
@@ -669,10 +785,13 @@ bölümde.
 - Temmuz'da +0.702R görünüyor ama 15 işlem, ve tamamı iki sembolün 2-4 işleminden geliyor.
   Anlamlı değil.
 - Seans kısıtı var (New York 09:30-16:00) — kripto 7/24 işlem gördüğü için bu kısıt
-  hiç ölçülmedi, kaldırıldığında ne olacağı bilinmiyor.
+  hiç ölçülmedi, kaldırıldığında ne olacağı bilinmiyor. **← incelemede ölçüldü, preset'i
+  öldüren şey buymuş.**
 - **Karar önerisi:** üründen çıkarmak veya "ölçüldü, tutmadı" etiketiyle bırakmak.
+  **← yanlış öneriydi; kısıt kaldırılınca setin en tutarlı preset'i oldu.**
 
-**Durum:** ölçüm hazır, sıra bekliyor.
+Bu bölüm kilitleme öncesi durumu kayıt için tutuluyor. Geçerli ayar yukarıdaki kilitli
+bölümde.
 
 ---
 

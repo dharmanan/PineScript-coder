@@ -96,10 +96,20 @@ describe("signal score", () => {
     expect(long).toContain("(emaFast > emaSlow)");
   });
 
+  // A session is a veto, never a score contribution: a scored session could be outvoted by
+  // other filters and let a signal fire outside the hours the user restricted it to.
+  //
+  // Built here rather than borrowed from a preset. VWAP Session Trader used to be the only
+  // preset with a session and the review removed it — the restriction was throwing away half
+  // its trades and keeping the worse half. The feature is still in the product, so it still
+  // needs this test; it just no longer has a preset to ride on.
   it("keeps a session filter mandatory rather than scored", () => {
-    const session = presets.find((preset) => preset.presetId === "vwap_session_trader");
-    expect(session?.execution.sessionEnabled).toBe(true);
-    const code = indicator(session as StrategyConfig);
+    const withSession: StrategyConfig = {
+      ...defaultConfig,
+      outputMode: "indicator",
+      execution: { ...defaultConfig.execution, sessionEnabled: true, session: "0930-1600", sessionTimezone: "America/New_York" }
+    };
+    const code = indicator(withSession);
     const scoreLine = code.split("\n").find((row) => row.startsWith("longScoreRaw = "));
     expect(scoreLine).not.toContain("sessionOk");
     expect(code).toContain("longScoreOk = sessionOk and confirmationOk");
