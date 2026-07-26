@@ -154,6 +154,16 @@ describe("profile selector", () => {
           signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 5,
           riskReward: 1.5, breakEvenAtR: 0, trailStartR: 0, trailDistanceR: 1
         }
+      },
+      // Money profile unchanged; win-rate profile moved to reward 1.25 without a trailing
+      // stop after it beat reward 3 on three of four symbols on the chart and on the unseen
+      // July data. The third preset in a row where a lower reward target and no trail won.
+      supertrend_volume: {
+        money: { riskReward: 5, breakEvenAtR: 0, trailStartR: 0 },
+        winRate: {
+          signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 10,
+          riskReward: 1.25, breakEvenAtR: 0, trailStartR: 0, trailDistanceR: 1
+        }
       }
     };
 

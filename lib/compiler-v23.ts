@@ -27,8 +27,14 @@ export function compilePine(config: StrategyConfig): string {
     'showRiskOutcomeLabels = input.bool(true, "Show stop/target outcome labels")',
     'showRiskOutcomeLabels = input.bool(true, "Show stop/target outcome labels")\n' +
       'costPerSide = input.float(0.01, "Commission + slippage per side (%)", minval=0, step=0.01)\n' +
-      'countFrom = input.time(timestamp("2015-01-01T00:00:00+0000"), "Count trades entered from")\n' +
-      'countUntil = input.time(timestamp("2035-01-01T00:00:00+0000"), "Count trades entered until")',
+      // The window defaults to 2026 through the end of 2028 rather than to everything the
+      // chart holds. Starting in 2026 keeps the count on the market the reader is actually
+      // trading instead of averaging it with 2019-2021, and the upper bound sits far enough
+      // ahead that the counter keeps picking up new trades as months pass — a bound that
+      // expires reads as a broken indicator. The bound is exclusive, so 2029-01-01 is how
+      // "through the end of 2028" is written.
+      'countFrom = input.time(timestamp("2026-01-01T00:00:00+0000"), "Count trades entered from")\n' +
+      'countUntil = input.time(timestamp("2029-01-01T00:00:00+0000"), "Count trades entered until")',
     "stop/target outcome label input"
   );
 

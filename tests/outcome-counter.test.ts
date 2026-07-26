@@ -48,9 +48,12 @@ describe("outcome counter", () => {
         expect(code).toContain("riskLossCount := riskLossCount + (countOutcome and outcomeR <= 0 ? 1 : 0)");
       });
 
+      // 2026 through the end of 2028, not every bar the chart holds: the count should reflect
+      // the current market, and the upper bound has to stay ahead of today or the panel looks
+      // frozen. Exclusive bound, hence 2029-01-01.
       it("counts only trades entered inside the measurement window", () => {
-        expect(code).toContain('countFrom = input.time(timestamp("2015-01-01T00:00:00+0000"), "Count trades entered from")');
-        expect(code).toContain('countUntil = input.time(timestamp("2035-01-01T00:00:00+0000"), "Count trades entered until")');
+        expect(code).toContain('countFrom = input.time(timestamp("2026-01-01T00:00:00+0000"), "Count trades entered from")');
+        expect(code).toContain('countUntil = input.time(timestamp("2029-01-01T00:00:00+0000"), "Count trades entered until")');
         expect(code).toContain(
           "countOutcome = not na(outcomeR) and not na(riskStartedTime) and riskStartedTime >= countFrom and riskStartedTime < countUntil"
         );

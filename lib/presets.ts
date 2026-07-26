@@ -124,8 +124,28 @@ export const presets: StrategyConfig[] = [
     momentum: { ...defaultConfig.momentum, rsiLong: 45, rsiShort: 40, rsiExit: 65 },
     risk: { ...defaultConfig.risk, stopMode: "none", takeProfitMode: "none" }
   }),
-  // holdout 2026: 271 trades, 21.0% win, +0.240R per trade
-  // Win-rate profile, holdout 2026: 338 trades, 42.6% win, +0.067R. BNB and BTC negative.
+  // LOCKED 26 July 2026 — reviewed on all four symbols in TradingView against the 2026
+  // holdout window, panel figures matched the measurement.
+  // See research/preset-sweep/PRESET-REVIEW-PLAN.md
+  //
+  // Money profile unchanged at reward 5. holdout 2026: 271 trades, 21.0% win, +0.240R per
+  // trade, positive on all four symbols — one of only two presets in the set that manages
+  // that. July 2026 is the other side of it: 29 trades, one winner, -0.817R.
+  //
+  // Win-rate profile moved from reward 3 with a trailing stop to reward 1.25 without one.
+  // On the chart, same symbols and the same Jan-Jun window: ETH +15.76R to +24.62R, BTC
+  // -7.62R to -1.27R, BNB -9.73R to -8.34R, SOL +20.05R to +10.04R. Net over the four went
+  // from +18.46R to +25.05R and the hit rate from 42.3% to 48.7%. Also less bad on the
+  // unseen July data (-0.233R against -0.377R), so the choice is not resting on a holdout
+  // that has now been read four times.
+  //
+  // Break-even at reward 1.25 is 44.4%, and all four symbols landed on the side of that
+  // line their result implies: ETH 58.3%, SOL 50.6%, BTC 44.9%, BNB 41.6%. BTC sitting half
+  // a point above break-even is exactly why it reads -0.014R per trade — the reward target
+  // moved it from losing to flat, not to winning.
+  //
+  // The cost is concentration: SOL halves, and ETH goes from 46% of the profit to 71% of it.
+  // Three of four symbols improve, one gets materially worse.
   preset({
     presetId: "supertrend_volume", name: "Supertrend Volume",
     chartTimeframe: "30", triggerWindow: 10, entryTrigger: "supertrend_flip",
@@ -133,7 +153,7 @@ export const presets: StrategyConfig[] = [
     volume: { ...defaultConfig.volume, multiplier: 1.25 },
     momentum: { ...defaultConfig.momentum, rsiEnabled: false },
     risk: { ...defaultConfig.risk, riskReward: 5 },
-    winRateProfile: winRate({ triggerWindow: 10, riskReward: 3 })
+    winRateProfile: winRate({ triggerWindow: 10, riskReward: 1.25, trailStartR: 0 })
   }),
   // holdout 2026: 168 trades, 22.0% win, +0.412R per trade
   // Win-rate profile, holdout 2026: 269 trades, 42.4% win, +0.083R. SOL negative. This is

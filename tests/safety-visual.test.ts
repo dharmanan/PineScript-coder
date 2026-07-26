@@ -154,7 +154,10 @@ describe("visual plan isolation", () => {
     advanced.higherTimeframe.enabled = true;
     const code = compilePine(advanced);
 
-    expect(code).toContain('bgcolor(showTrendRibbon and visualProfile != "Clean" ? (htfBull ? color.new(color.green, 99) : color.new(color.red, 99)) : na, title="HTF bias")');
-    expect(code).not.toContain('bgcolor(htfBull ? color.new(color.green, 92) : color.new(color.red, 92), title="HTF bias")');
+    // Asserted up to the title rather than the closing paren: what this test is about is the
+    // colour, the transparency and the profile check, and compiler-v29 pins main-chart
+    // drawings by appending force_overlay=true after the title.
+    expect(code).toContain('bgcolor(showTrendRibbon and visualProfile != "Clean" ? (htfBull ? color.new(color.green, 99) : color.new(color.red, 99)) : na, title="HTF bias"');
+    expect(code).not.toContain('bgcolor(htfBull ? color.new(color.green, 92) : color.new(color.red, 92), title="HTF bias"');
   });
 });

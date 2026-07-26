@@ -1,11 +1,69 @@
 # Preset Gözden Geçirme Planı
 
+> ## Yeni oturum buradan başlar
+>
+> **Sıradaki iş:** Breakout Momentum incelemesi (4. sıra, aşağıdaki tabloda).
+>
+> **İlk üç komut:**
+> ```
+> git status --short
+> /Users/kohen/bin/safe-npm test
+> /Users/kohen/bin/safe-npm run dev -- -H 0.0.0.0
+> ```
+> 725 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
+>
+> **Commit bekleyen değişiklikler stage'de.** Kohen commit'i kendi atar; Claude
+> `git commit`, `push`, `pull`, `fetch`, `reset`, `rebase` çalıştırmaz. Stage için
+> `/Users/kohen/bin/safe-git-stage DOSYA`, tek tek, `git add .` asla.
+>
+> **Node/npm sadece** `/Users/kohen/bin/safe-npm` üzerinden. Dev server öncesi
+> `/Users/kohen/bin/safe-stop`. Tarama çalıştırmadan önce de dev server durdurulmalı,
+> yoksa port 3000 çakışır.
+>
+> ### Bu projede öğrenilmiş, tekrar tartışılmayacak kurallar
+>
+> 1. **Sembolleri asla birleştirme.** Her sayı BTC/ETH/BNB/SOL ayrı raporlanır. Kripto
+>    sembolleri ~0.85 korelasyonlu; birleştirmek işlem sayısını şişirir, güven aralığını
+>    daraltmaz ve tek sembolün taşıdığı sonucu gizler.
+> 2. **İsabet oranı tek başına anlamsız.** Başabaş isabet `1/(1+rr)`. Ödül hedefini
+>    düşürünce isabet de eşik de aynı anda yükselir. Kâr, ikisi arasındaki farktan gelir.
+> 3. **Seçim sadece geliştirme döneminden.** Holdout'a bakarak konfig seçmek holdout'u
+>    yakar. 2026 Ocak–Haziran dört kez okundu, artık bir şey kanıtlamıyor. Temmuz 2026
+>    (`data-july/`) daha az yıpranmış.
+> 4. **Medyan bulgusuna güvenme, izole test yap.** "11.520 konfigün medyanı ATR 3'ü
+>    destekliyor" dendi, tek değişkenli testte 4 preset iyileşti 4 kötüleşti. Karıştırıcı
+>    değişken.
+> 5. **Grafikte doğrulama şart.** Panel sayıları ölçümle uyuşmadan hiçbir preset kilitlenmez.
+>    Şu ana kadar hepsi uydu — isabet oranları yarım puan içinde.
+> 6. **TradingView'de profil seçiliyken input alanları yok sayılır.** Panel `CUSTOM · rr X`
+>    yazmıyorsa değer geçmemiştir. Ayrıca isabet oranı ödül hedefini ele verir: rr 1.5
+>    testinde isabet %40 civarı çıkmıyorsa ayar uygulanmamıştır.
+> 7. **Panelle ölçümü karşılaştırmadan önce `countUntil`'i 2026-07-01 yap.** Ürün default'u
+>    `countFrom` 2026-01-01 → `countUntil` 2029-01-01; yani `countFrom` zaten ölçümün holdout
+>    başlangıcıyla aynı, sadece üst sınır Temmuz'u ve sonrasını içine alıyor. Ölçüm tablosu
+>    Haziran'da bitiyor. Supertrend Volume'da bu fark 1.6 puanlık sahte sapma üretti, üst sınır
+>    daraltılınca 0.3 puana indi. Tek alan, script yazmaya gerek yok. **Okuma bitince default'a
+>    geri al** — 2029 sınırı ürünün kasıtlı tercihi, tarih geçtikçe panelin donmuş görünmemesi
+>    için (üst sınır dışlayıcı, 2029-01-01 = 2028 sonuna kadar).
+>
+> ### Bilinmesi gereken üç ölçüm gerçeği
+>
+> - **Edge 2023'te üçte bire indi.** Dokuz preset birlikte, işlem başına 2019-2022'de
+>   +0.30R, 2023 sonrası +0.09R. Dört sembolde de, aynı yıl.
+> - **2026 Temmuz'da 34 adaydan 31'i zararda.** O ay yatay geçti; trend takip eden
+>   sistemler yatayda zarar eder, bu beklenen davranıştır.
+> - **Denenip reddedilen her şey aşağıdaki tabloda.** ICT'nin dört mekanizması, filtre
+>   eşikleri, dönem değiştirme, düşük ödül hedefleri. Aynı yoldan tekrar geçilmesin.
+>
+> ---
+
+
 On indikatörü tek tek ele alıp, gerçek grafikte doğruladıktan sonra kilitleyip bir sonrakine
 geçmek için. Bir preset kilitlendikten sonra o preset'e dokunulmaz — yeni bir ölçüm onu
 tekrar açmayı gerektirirse, o karar ayrıca konuşulur.
 
 **Son güncelleme:** 26 Temmuz 2026
-**Kilitlenen:** 2 / 9 ölçülebilir preset
+**Kilitlenen:** 3 / 9 ölçülebilir preset
 
 ---
 
@@ -35,8 +93,8 @@ sayıları ölçümle uyuştuktan sonra kilitlenir.
 |---|---|---|---|
 | 1 | Balanced Intraday | 5.7 | **KİLİTLENDİ** ✓ |
 | 2 | Fast EMA Scalper | 21.5 | **KİLİTLENDİ** ✓ |
-| 3 | Supertrend Volume | 10.5 | **SIRADA** |
-| 4 | Breakout Momentum | 6.6 | bekliyor |
+| 3 | Supertrend Volume | 10.5 | **KİLİTLENDİ** ✓ |
+| 4 | Breakout Momentum | 6.6 | **SIRADA** |
 | 5 | VWAP Session Trader | 7.1 | bekliyor |
 | 6 | 4H Swing Trend | 2.2 | bekliyor |
 | 7 | Selective Multi-Timeframe | 2.1 | bekliyor |
@@ -277,12 +335,92 @@ BNB dört ayarın hiçbirinde artıya geçmedi. Bu preset ETH ve SOL ile yaşıy
 
 ---
 
-## 3. Supertrend Volume — bekliyor
+## 3. Supertrend Volume — ✅ KİLİTLENDİ (26 Temmuz 2026)
 
 `supertrend_volume` · 30 dakika · tetikleyici penceresi 10 · ATR×2
 
+- **Para profili:** risk/ödül 5 — *değişmedi*
+- **İsabet profili:** risk/ödül **1.25**, trailing **yok** — *inceleme sonucu değişti*
+
+### İncelemede ne yapıldı
+
+1. Dört sembolde grafikte okundu. İlk okumada panel ölçümden 1.6 puan aşağı çıktı.
+2. Sebebi bulundu: panel `countFrom` 2015 olduğu için **Temmuz dahil** bütün yüklü geçmişi
+   sayıyor, ölçüm tablosu ise Haziran'da bitiyor. Temmuz bu profilde −0.377R.
+3. Panelde tarih aralığı 2026-01-01 → 2026-07-01 yapıldı, fark kapandı (aşağıda).
+4. rr 1.25 grafikte denendi, dört sembolde de okundu, isabet profili ona çevrildi.
+
+### Ölçüm aracının doğrulaması (aynı pencere, 2026 Oca–Haz)
+
+| Sembol | Panel (rr 3) | Ölçüm | İsabet farkı |
+|---|---|---|---|
+| ETH | 76t · %48.7 · +0.207R | 79t · %48.1 · +0.192R | +0.6 pt |
+| SOL | 79t · %45.6 · +0.254R | 82t · %46.3 · +0.284R | −0.7 pt |
+| BNB | 87t · %37.9 · −0.112R | 92t · %38.0 · −0.108R | −0.1 pt |
+| BTC | 82t · %37.8 · −0.093R | 85t · %38.8 · −0.068R | −1.0 pt |
+| **Toplam** | 324t · %42.3 · +0.057R | 338t · %42.6 · +0.067R | −0.3 pt |
+
+İşlem sayıları %4–5 düşük, panel biraz az sayıyor. Önceki iki preset'te %10 içindeydi.
+
+### Kilitleme öncesi ve sonrası (TradingView paneli, 2026 Oca–Haz)
+
+| Sembol | Eski isabet profili (rr 3 + trailing) | **Yeni (rr 1.25, trailing yok)** |
+|---|---|---|
+| ETH | 76t · %48.7 · +15.76R | 84t · **%58.3** · **+24.62R** |
+| SOL | 79t · %45.6 · **+20.05R** | 83t · %50.6 · +10.04R |
+| BTC | 82t · %37.8 · −7.62R | 89t · %44.9 · **−1.27R** |
+| BNB | 87t · %37.9 · −9.73R | 89t · %41.6 · **−8.34R** |
+| **Toplam** | 324t · %42.3 · **+18.46R** | 345t · **%48.7** · **+25.05R** |
+
+Ölçüm rr 1.25 için %48.8 ve +0.076R demişti; panel %48.7 ve +0.073R verdi.
+
+### Kural 2 grafikte doğrulandı
+
+rr 1.25'te başabaş isabet `1/(1+1.25)` = **%44.4**. Dört sembolün dördü de bu eşiğe göre
+doğru tarafta çıktı: ETH %58.3 (+0.293R), SOL %50.6 (+0.121R), BTC %44.9 (−0.014R),
+BNB %41.6 (−0.094R). BTC'nin eşiğin yarım puan üstünde olması −0.014R'yi tam açıklıyor —
+komisyon o yarım puanı siliyor.
+
+Ölçüm BTC için "+0.027R, artıya döner" demişti, grafikte −0.014R çıktı. İkisi de sıfırın
+gürültüsünde; doğru ifade **"BTC zarardan başabaşa geldi"**, artıya geçti değil.
+
+### Neden değiştirildi
+
+- Aynı pencerede +6.6R fazla, işlem başına +0.057R → +0.073R
+- İsabet altı puan yukarı, dört sembolün üçü iyileşti
+- **Temmuz'da da daha az kötü:** rr 1.25 −0.233R, rr 3 −0.377R. Seçim dört kez okunmuş
+  holdout'a değil, kimsenin görmediği veriye de dayanıyor
+- Trailing zaten işlevsiz kalıyor: 1.5R'de başlıyor, hedef 1.25R, hiç kurulmuyor
+
+### Açık kalan not
+
+**Bedeli yoğunlaşma.** SOL yarıya iniyor (+20.05R → +10.04R) ve kârın ETH payı %46'dan
+%71'e çıkıyor. Balanced Intraday'de bunun tam tersi olmuştu — orada değişiklik kârı dört
+sembole yaymıştı. Burada tek sembole topluyor. Ürün etiketinde bu şekilde anlatılmalı:
+bu preset ETH ile yaşıyor, SOL katkı veriyor, BTC masrafını çıkarıyor, BNB zarar ettiriyor.
+
+Para profili 2026 Oca-Haz'da dört sembolde de artıda (+0.240R) — bu listede iki preset'te
+görülen bir özellik. Ama Temmuz'da 29 işlemde bir kazanan.
+
+### Bu incelemede bulunan ve düzeltilen ürün hatası
+
+Supertrend Volume, çizimleri ana grafiğe çivilenmeyen **tek** preset'ti: `overlay=true`
+üretiliyor ama hiçbir `plot`/`label`/tablo satırında `force_overlay=true` yoktu. RSI paneli
+olan dokuz preset'te bu koruma zaten vardı (`compiler-v14`). Gösterge bir kez ayrı panele
+düştüğünde supertrend, stop ve hedef o panelin kendi ölçeğine çiziliyor, dashboard da altı
+satıra kırpılıyordu — kural 6'nın okuduğu `Profile` satırı tam kesilen yerdeydi.
+`lib/compiler-v29.ts` eklendi, `tests/main-chart-pin.test.ts` koruyor.
+
+### Kilit nasıl korunuyor
+
+`tests/profile-selector.test.ts` içindeki `locked presets` bölümü.
+
+---
+
+## Eski ölçüm kaydı — Supertrend Volume (kilitleme öncesi)
+
 - **Para profili:** risk/ödül 5
-- **İsabet profili:** risk/ödül 3, trailing 1.5/1, pencere 10
+- **Eski isabet profili:** risk/ödül 3, trailing 1.5/1, pencere 10
 
 | Dönem | Para profili | İsabet profili |
 |---|---|---|
@@ -317,7 +455,8 @@ BNB dört ayarın hiçbirinde artıya geçmedi. Bu preset ETH ve SOL ile yaşıy
   dönüşleri sürekli yanlış sinyal veriyor.
 - ATR 3.0 denendi: 2026 Oca-Haz +0.086R iyileşme, Temmuz 22 işlemde sıfır kazanan.
 
-**Durum:** ölçüm hazır, sıra bekliyor.
+Bu bölüm kilitleme öncesi durumu kayıt için tutuluyor. Geçerli ayar yukarıdaki kilitli
+bölümde.
 
 ---
 
