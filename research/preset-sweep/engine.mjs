@@ -303,6 +303,147 @@ export function buildSignals(
   return { series, long, short };
 }
 
+// Entries found inside the candle instead of after it closed.
+//
+// buildSignals answers "was this setup valid once the candle finished", and the fill that
+// follows is the next candle's open. On a large candle those are far apart: the level breaks
+// early in the hour and the fill lands near the top of the move, which is the complaint that
+// started this. Here the trigger is checked on the lower-timeframe candles that make up the
+// chart candle, and the entry is the lower-timeframe close where it first fires.
+//
+// Nothing looks ahead. Three layers, each coarser than the one below it:
+//   bias      — higher timeframe, unchanged, only moves when the 4h candle closes
+//   levels    — the last CLOSED chart candle: the breakout high, the EMA, ADX, RSI. These
+//               have no intrabar value by definition; an EMA of hourly closes does not
+//               exist halfway through an hour.
+//   the moment — the lower-timeframe close, where price meets a level that was already known
+//
+// Two filters are exceptions because they genuinely do have an intrabar value, and both are
+// computed on the lower-timeframe series: VWAP, which is cumulative and anchored to the day,
+// and volume, compared against a lower-timeframe volume average rather than the chart one.
+// Comparing a partial hour's volume against an hourly average would reject almost everything.
+//
+// Only level-crossing triggers can be improved this way. ema_cross and supertrend_flip are
+// changes in an indicator's own state, which only happens at the chart close, so they are
+// rejected here rather than silently measured as something they are not.
+const INTRABAR_TRIGGERS = new Set(["breakout", "pullback_reclaim", "vwap_reclaim"]);
+
+export function buildIntrabarSignals(config, plan, candles, groups, { series: reused, signalMode = "all", scoreThreshold = 60 } = {}) {
+  const series = reused ?? buildSeries(config, candles);
+  const allowShort = config.direction === "long_short";
+  const triggerId = plan.entry.trigger.id;
+  if (!INTRABAR_TRIGGERS.has(triggerId)) {
+    throw new Error(
+      `Intrabar entry cannot improve the "${triggerId}" trigger: it is an indicator-state change, ` +
+      "which only happens when the chart candle closes. Supported: " + [...INTRABAR_TRIGGERS].join(", ")
+    );
+  }
+
+  // The lower-timeframe series, flattened so cumulative values run across chart candles the
+  // way they actually do, then indexed back to the step it belongs to.
+  const steps = groups.flat();
+  const stepVwap = vwap(steps);
+  // The same lookback the preset asks for, counted in lower-timeframe candles: twenty
+  // five-minute bars rather than twenty hours. That is what makes it a comparison between a
+  // breakout candle and the candles around it instead of against a different timescale.
+  const stepVolumeAverage = sma(steps.map((candle) => candle.volume), config.volume.averageLength);
+  const offsets = [];
+  let running = 0;
+  for (const group of groups) {
+    offsets.push(running);
+    running += group.length;
+  }
+
+  const fixed = plan.entry.filters.filter(
+    (filter) => !["volume", "vwap", "long_ma", "confirmation", "session"].includes(filter.id)
+  );
+  for (const filter of plan.entry.filters) {
+    if (!FILTERS[filter.id]) throw new Error(`Sweep has no predicate for plan filter: ${filter.id}`);
+  }
+  const usesVolume = plan.entry.filters.some((filter) => filter.id === "volume");
+  const usesVwap = plan.entry.filters.some((filter) => filter.id === "vwap");
+  const usesLongMa = plan.entry.filters.some((filter) => filter.id === "long_ma");
+  const usesSession = plan.entry.filters.some((filter) => filter.id === "session");
+
+  // Score mode weighs filters against each other, which needs every filter on the same
+  // footing. Mixing chart-bar and intrabar footings would produce a score that means nothing,
+  // so it is refused rather than approximated.
+  if (signalMode === "score") {
+    throw new Error("Intrabar entry does not support score mode: the filters sit on two different footings");
+  }
+  void scoreThreshold;
+
+  const entries = new Array(candles.length).fill(null);
+  const cooldown = Math.max(0, config.execution.cooldownBars);
+  let lastSignalBar = null;
+
+  for (let index = 1; index < candles.length; index += 1) {
+    if (lastSignalBar !== null && index - lastSignalBar <= cooldown) continue;
+    const group = groups[index];
+    if (!group?.length) continue;
+    const previous = index - 1;
+
+    // Everything that cannot move inside the candle is decided once, before the walk.
+    const fixedOk = (long) => {
+      for (const filter of fixed) if (!FILTERS[filter.id](series, previous, long, config)) return false;
+      return true;
+    };
+    const longAllowed = fixedOk(true);
+    const shortAllowed = allowShort && fixedOk(false);
+    if (!longAllowed && !shortAllowed) continue;
+
+    const level = {
+      longBreak: series.previousHigh?.[previous] ?? null,
+      shortBreak: series.previousLow?.[previous] ?? null,
+      emaFast: series.emaFast[previous],
+      longMa: series.longMa[previous]
+    };
+
+    // The reference the crossing is measured from: the last close before this candle opened,
+    // then each step's own close as the walk proceeds.
+    let reference = series.closes[previous];
+    for (let step = 0; step < group.length; step += 1) {
+      const bar = group[step];
+      const at = offsets[index] + step;
+      const price = bar.close;
+
+      const crossed = (long) => {
+        if (triggerId === "breakout") {
+          const line = long ? level.longBreak : level.shortBreak;
+          if (line === null) return false;
+          return long ? reference <= line && price > line : reference >= line && price < line;
+        }
+        if (triggerId === "pullback_reclaim") {
+          if (level.emaFast === null) return false;
+          return long ? reference <= level.emaFast && price > level.emaFast : reference >= level.emaFast && price < level.emaFast;
+        }
+        const line = stepVwap[at];
+        if (line === null) return false;
+        return long ? reference <= line && price > line : reference >= line && price < line;
+      };
+
+      const intrabarOk = (long) => {
+        if (usesVolume && !(stepVolumeAverage[at] !== null && bar.volume >= stepVolumeAverage[at] * config.volume.multiplier)) return false;
+        if (usesVwap && !(stepVwap[at] !== null && (long ? price > stepVwap[at] : price < stepVwap[at]))) return false;
+        if (usesLongMa && !(level.longMa !== null && (long ? price > level.longMa : price < level.longMa))) return false;
+        if (usesSession && !series.session[index]) return false;
+        return true;
+      };
+
+      const longNow = longAllowed && crossed(true) && intrabarOk(true);
+      const shortNow = !longNow && shortAllowed && crossed(false) && intrabarOk(false);
+      if (longNow || shortNow) {
+        entries[index] = { direction: longNow ? 1 : -1, price, step };
+        lastSignalBar = index;
+        break;
+      }
+      reference = price;
+    }
+  }
+
+  return { series, entries };
+}
+
 // Mirrors the generated indicator exactly: arm on the signal candle, fill at the
 // next candle's open with the risk distance frozen at the signal, resolve stop and
 // target intrabar, charge both sides of the commission, and score a win only when
@@ -311,12 +452,29 @@ export function simulate(
   config,
   candles,
   signals,
-  { riskReward, costPerSide = 0.01, breakEvenAtR = null, trailStartR = null, trailDistanceR = null, intrabar = null } = {}
+  {
+    riskReward, costPerSide = 0.01, breakEvenAtR = null, trailStartR = null, trailDistanceR = null, intrabar = null,
+    // Entry type is a chart input, not part of StrategyConfig, so it arrives here as an option
+    // and defaults to the market path every generated script opens with. Passing "market" —
+    // or nothing — leaves this function behaving exactly as it did before limit fills existed,
+    // which is what keeps every number measured so far valid.
+    entryType = "market", limitPullback = 0.5, limitExpiryBars = 5,
+    // Entries found inside the candle by buildIntrabarSignals. When present the position
+    // opens on its own candle at the price the level was crossed, so there is nothing to arm
+    // and nothing to fill later — the signal and the fill are the same moment.
+    intrabarEntries = null
+  } = {}
 ) {
   const { series, long, short } = signals;
   const reward = riskReward ?? config.risk.riskReward;
   const useClose = config.risk.stopTrigger === "close";
+  const useLimit = entryType === "limit";
   const trades = [];
+  // The reversal test asks whether the opposite side signalled on this candle, and that is
+  // the same question either way, so the two entry models are flattened to one shape here
+  // rather than branching everywhere it is asked.
+  const longSignal = intrabarEntries ? intrabarEntries.map((entry) => entry?.direction === 1) : long;
+  const shortSignal = intrabarEntries ? intrabarEntries.map((entry) => entry?.direction === -1) : short;
 
   let direction = 0;
   let entry = null;
@@ -327,6 +485,11 @@ export function simulate(
   let bestR = 0;
   let pendingDirection = 0;
   let pendingRisk = null;
+  let pendingLimit = null;
+  let pendingExpires = null;
+  // Where on the fill candle the position began, in intrabar steps. Zero for a market fill,
+  // because that one happens at the open and the whole candle belongs to the trade.
+  let fillStep = 0;
 
   // A stop only ever moves in the trade's favour. Applied on the candle after the level
   // was reached, because a candle cannot prove the favourable excursion came first.
@@ -373,16 +536,68 @@ export function simulate(
   for (let index = 0; index < candles.length; index += 1) {
     const candle = candles[index];
 
+    fillStep = 0;
+    // The intrabar entry opens on its own candle, at the step where the level was crossed, so
+    // the rest of that candle can already resolve it. Risk is measured from the last closed
+    // candle's ATR, because the current one is still forming.
+    const intrabarEntry = intrabarEntries?.[index];
+    if (intrabarEntry && direction === 0) {
+      const risk = riskDistance(index - 1, intrabarEntry.direction === 1);
+      if (risk !== null && risk > 0) {
+        direction = intrabarEntry.direction;
+        entry = intrabarEntry.price;
+        unit = risk;
+        bestR = 0;
+        stop = direction === 1 ? entry - risk : entry + risk;
+        target = direction === 1 ? entry + risk * reward : entry - risk * reward;
+        startedBar = index;
+        fillStep = intrabarEntry.step;
+      }
+    }
+
     if (pendingDirection !== 0 && direction === 0 && pendingRisk > 0) {
-      direction = pendingDirection;
-      entry = candle.open;
-      unit = pendingRisk;
-      bestR = 0;
-      stop = direction === 1 ? entry - pendingRisk : entry + pendingRisk;
-      target = direction === 1 ? entry + pendingRisk * reward : entry - pendingRisk * reward;
-      startedBar = index;
+      const isLong = pendingDirection === 1;
+      // A market order always fills. A limit order fills only if the candle came back to the
+      // level, and a candle that gapped straight through it fills at the open, which is the
+      // price actually available. Both rules are the generated script's, copied rather than
+      // improved on: the engine's job is to predict what the indicator does on the chart, so
+      // being cleverer than the indicator would only make the two disagree.
+      const reached = !useLimit || (isLong ? candle.low <= pendingLimit : candle.high >= pendingLimit);
+      if (reached) {
+        const risk = pendingRisk;
+        entry = useLimit
+          ? (isLong ? Math.min(candle.open, pendingLimit) : Math.max(candle.open, pendingLimit))
+          : candle.open;
+        // With five-minute steps to hand, the step that reached the limit is known, so the
+        // candle's earlier movement — which happened before this trade existed — is not
+        // charged against it. Without them the whole candle is used, exactly as Pine does.
+        if (useLimit) {
+          const steps = intrabar?.[index];
+          if (steps?.length) {
+            const at = steps.findIndex((bar) => (isLong ? bar.low <= pendingLimit : bar.high >= pendingLimit));
+            fillStep = at < 0 ? 0 : at;
+          }
+        }
+        direction = pendingDirection;
+        unit = risk;
+        bestR = 0;
+        stop = direction === 1 ? entry - risk : entry + risk;
+        target = direction === 1 ? entry + risk * reward : entry - risk * reward;
+        startedBar = index;
+        pendingDirection = 0;
+        pendingRisk = null;
+        pendingLimit = null;
+        pendingExpires = null;
+      }
+    }
+
+    // Checked after the fill so the expiry candle can still trade, which is the order the
+    // generated script uses. An expired level never fills days later.
+    if (pendingDirection !== 0 && useLimit && pendingExpires !== null && index > pendingExpires) {
       pendingDirection = 0;
       pendingRisk = null;
+      pendingLimit = null;
+      pendingExpires = null;
     }
 
     if (direction !== 0) {
@@ -392,7 +607,7 @@ export function simulate(
       const steps = intrabar?.[index]?.length ? intrabar[index] : [candle];
       const lastStep = steps.length - 1;
 
-      for (let step = 0; step <= lastStep && direction !== 0; step += 1) {
+      for (let step = fillStep; step <= lastStep && direction !== 0; step += 1) {
         const bar = steps[step];
         // A close-confirmed stop is a rule about the chart candle, not about a piece of
         // it, so it is only tested once the chart candle is complete.
@@ -412,19 +627,26 @@ export function simulate(
         }
       }
 
-      if (direction !== 0 && ((direction === 1 && short[index]) || (direction === -1 && long[index]))) {
+      if (direction !== 0 && ((direction === 1 && shortSignal[index]) || (direction === -1 && longSignal[index]))) {
         close(index, candle.close, "reversed");
       }
     }
 
-    const acceptedLong = long[index] && direction !== 1;
-    const acceptedShort = short[index] && direction !== -1;
+    // Arming for a later fill is the chart-close model only. An intrabar entry has already
+    // opened above, or missed, and there is nothing to carry into the next candle.
+    const acceptedLong = !intrabarEntries && longSignal[index] && direction !== 1;
+    const acceptedShort = !intrabarEntries && shortSignal[index] && direction !== -1;
     if (direction === 0 && (acceptedLong || acceptedShort)) {
       const isLong = acceptedLong;
       const distance = riskDistance(index, isLong);
       if (distance !== null && distance > 0) {
         pendingDirection = isLong ? 1 : -1;
         pendingRisk = distance;
+        // The limit sits a fraction of the risk back from the signal candle's close, and the
+        // order lives for a fixed number of candles. Both are computed even on the market
+        // path so the two paths arm identically and only the fill differs.
+        pendingLimit = isLong ? candle.close - distance * limitPullback : candle.close + distance * limitPullback;
+        pendingExpires = index + limitExpiryBars;
       }
     }
   }

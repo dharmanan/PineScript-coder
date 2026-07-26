@@ -66,6 +66,19 @@ const signalOptions = mode === "all"
   ? { signalMode: "all", triggerWindow }
   : { signalMode: "score", scoreThreshold: Number(mode.replace("score-", "")), triggerWindow };
 
+// The engine grew a limit-pullback entry path, and a path the engine can run but parity has
+// never checked is a path whose numbers mean nothing. These flags exist so the same limit
+// order can be set on both sides — engine here, "Entry type: Limit (pullback)" on the chart —
+// and the two readings held against each other.
+const entryOptions = {
+  entryType: args.entryType ?? "market",
+  limitPullback: Number(args.limitPullback ?? 0.5),
+  limitExpiryBars: Number(args.limitExpiry ?? 5)
+};
+if (!["market", "limit"].includes(entryOptions.entryType)) {
+  throw new Error(`--entryType must be market or limit, got ${entryOptions.entryType}`);
+}
+
 // Reads every downloaded source, so a parity window can sit anywhere in 2019-2026.
 const { bySymbol } = await loadAll();
 const fiveMinute = bySymbol.get(symbol);
@@ -79,7 +92,7 @@ const plan = buildBehaviorPlan(preset);
 const trades = [];
 for (const segment of segments) {
   const signals = buildSignals(preset, plan, segment, signalOptions);
-  for (const trade of simulate(preset, segment, signals, { riskReward, costPerSide, ...exitOptions })) {
+  for (const trade of simulate(preset, segment, signals, { riskReward, costPerSide, ...exitOptions, ...entryOptions })) {
     if (trade.entryTimestamp >= from && trade.entryTimestamp < toExclusive) trades.push(trade);
   }
 }
@@ -90,7 +103,10 @@ const iso = (value) => new Date(value).toISOString().slice(0, 16).replace("T", "
 const stopNote = ` | stop=${preset.risk.stopTrigger}`;
 const htfNote = preset.higherTimeframe.enabled ? ` | htf=${preset.higherTimeframe.timeframe}` : "";
 const exitNote = exitOptions.trailStartR ? ` | trail ${exitOptions.trailStartR}/${exitOptions.trailDistanceR}` : exitOptions.breakEvenAtR ? ` | be ${exitOptions.breakEvenAtR}` : "";
-console.log(`${presetId} | ${symbol} | ${timeframe.label} | ${mode} | w${triggerWindow} | rr=${riskReward}${exitNote} | cost=${costPerSide}%${stopNote}${htfNote}`);
+const entryNote = entryOptions.entryType === "limit"
+  ? ` | entry=limit ${entryOptions.limitPullback}xR, expires ${entryOptions.limitExpiryBars} bars`
+  : " | entry=market";
+console.log(`${presetId} | ${symbol} | ${timeframe.label} | ${mode} | w${triggerWindow} | rr=${riskReward}${exitNote}${entryNote} | cost=${costPerSide}%${stopNote}${htfNote}`);
 console.log(`window ${iso(from)} -> ${iso(toExclusive)}`);
 console.log("");
 console.log(`Wins / Losses   ${metrics.wins} / ${metrics.losses}`);

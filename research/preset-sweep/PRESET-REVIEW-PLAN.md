@@ -2,7 +2,7 @@
 
 > ## Yeni oturum buradan başlar
 >
-> **Sıradaki iş:** Breakout Momentum incelemesi (4. sıra, aşağıdaki tabloda).
+> **Sıradaki iş:** VWAP Session Trader incelemesi (5. sıra, aşağıdaki tabloda).
 >
 > **İlk üç komut:**
 > ```
@@ -10,7 +10,7 @@
 > /Users/kohen/bin/safe-npm test
 > /Users/kohen/bin/safe-npm run dev -- -H 0.0.0.0
 > ```
-> 725 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
+> 737 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
 >
 > **Commit bekleyen değişiklikler stage'de.** Kohen commit'i kendi atar; Claude
 > `git commit`, `push`, `pull`, `fetch`, `reset`, `rebase` çalıştırmaz. Stage için
@@ -38,7 +38,14 @@
 > 6. **TradingView'de profil seçiliyken input alanları yok sayılır.** Panel `CUSTOM · rr X`
 >    yazmıyorsa değer geçmemiştir. Ayrıca isabet oranı ödül hedefini ele verir: rr 1.5
 >    testinde isabet %40 civarı çıkmıyorsa ayar uygulanmamıştır.
-> 7. **Panelle ölçümü karşılaştırmadan önce `countUntil`'i 2026-07-01 yap.** Ürün default'u
+> 7. **Sadece ödül hedefini oynatmak inceleme değil.** İlk üç preset böyle kilitlendi ve
+>    Kohen bunu durdurdu: *"tüm olasılıkları düşünmeden sadece rr değiştirerek mi başarı
+>    arıyoruz"*. Bir preset'in **kendi yapısı** ölçülmeden inceleme bitmez — kırılma kanalı,
+>    EMA'lar, zaman dilimi, stop onayı, filtre eşikleri, MACD. Breakout Momentum'da asıl
+>    kazanım tam buradan çıktı, ödül hedefi ayrıntı kaldı. Araç: `run-structure-axes.mjs`.
+>    **Yapı değişirse isabet profili baştan ölçülür** (`run-winrate-axes.mjs`), çünkü eski
+>    ödül hedefi eski yapıya karşı seçilmişti.
+> 8. **Panelle ölçümü karşılaştırmadan önce `countUntil`'i 2026-07-01 yap.** Ürün default'u
 >    `countFrom` 2026-01-01 → `countUntil` 2029-01-01; yani `countFrom` zaten ölçümün holdout
 >    başlangıcıyla aynı, sadece üst sınır Temmuz'u ve sonrasını içine alıyor. Ölçüm tablosu
 >    Haziran'da bitiyor. Supertrend Volume'da bu fark 1.6 puanlık sahte sapma üretti, üst sınır
@@ -63,7 +70,7 @@ geçmek için. Bir preset kilitlendikten sonra o preset'e dokunulmaz — yeni bi
 tekrar açmayı gerektirirse, o karar ayrıca konuşulur.
 
 **Son güncelleme:** 26 Temmuz 2026
-**Kilitlenen:** 3 / 9 ölçülebilir preset
+**Kilitlenen:** 4 / 9 ölçülebilir preset
 
 ---
 
@@ -94,8 +101,8 @@ sayıları ölçümle uyuştuktan sonra kilitlenir.
 | 1 | Balanced Intraday | 5.7 | **KİLİTLENDİ** ✓ |
 | 2 | Fast EMA Scalper | 21.5 | **KİLİTLENDİ** ✓ |
 | 3 | Supertrend Volume | 10.5 | **KİLİTLENDİ** ✓ |
-| 4 | Breakout Momentum | 6.6 | **SIRADA** |
-| 5 | VWAP Session Trader | 7.1 | bekliyor |
+| 4 | Breakout Momentum | 6.6 | **KİLİTLENDİ** ✓ |
+| 5 | VWAP Session Trader | 7.1 | **SIRADA** |
 | 6 | 4H Swing Trend | 2.2 | bekliyor |
 | 7 | Selective Multi-Timeframe | 2.1 | bekliyor |
 | 8 | RSI Divergence Reversal | 5.3 | bekliyor |
@@ -460,12 +467,129 @@ bölümde.
 
 ---
 
-## 4. Breakout Momentum — bekliyor
+## 4. Breakout Momentum — ✅ KİLİTLENDİ (26 Temmuz 2026)
 
-`breakout_momentum` · 60 dakika · tetikleyici penceresi 3 · ATR×2
+`breakout_momentum` · 60 dakika · **kırılma kanalı 10** · **ADX 30** · ATR×2 ·
+**kapanış onaylı stop** · tetikleyici penceresi 3
+
+- **Para profili:** risk/ödül 6 — *değişmedi*
+- **İsabet profili:** risk/ödül **1.25**, trailing **1R'de kurulur, 0.5R takip** — *değişti*
+
+### Bu inceleme diğerlerinden farklı yürüdü
+
+İlk üç preset'te sadece **ödül hedefi** oynatıldı, çünkü o güne kadar yapılmış hiçbir tarama
+başka bir eksene bakmamıştı. Kohen bunu şu sözlerle durdurdu: *"tüm olasılıkları düşünmeden
+sadece rr değiştirerek mi başarı arıyoruz"*. Haklıydı.
+
+Bu preset'te ilk kez **preset'in kendi yapısı** ölçüldü: kırılma kanalı uzunluğu, grafik zaman
+dilimi, EMA'lar, MACD, stop onayı, üst zaman dilimi ayarı. Bir kırılma sisteminde kanal
+uzunluğu sistemin **ne olduğunu** belirleyen sayıdır ve altı yıl boyunca elle konmuş 20'de
+kalmıştı.
+
+Bulgu: rr'yi 2'den 3'e çekmek ayrıntıydı. Asıl kazanım **kanal 10 + ADX 30 + kapanış stopu**
+üçlüsünde çıktı.
+
+### Ne değişti ve neden
+
+| Ayar | Eski | Yeni | Gerekçe |
+|---|---|---|---|
+| Kırılma kanalı | 20 | **10** | Tek değişkenli testte dört dönemin üçünde iyi, işlem sayısı da artıyor. 30 ve 50 denendi, ikisi de holdout'ta kötüleşti ve ETH'yi eksiye düşürdü. Yön tek taraflı: kısa kanal daha iyi. |
+| ADX eşiği | 20 | **30** | 2019-2022'de kötü (+0.317 vs +0.415), 2023 sonrasının **üç döneminde de** iyi. Projenin kendi bulgusuyla örtüşüyor: edge 2023'te üçte bire indi, yüksek eşik yeni piyasaya uyuyor. |
+| Stop onayı | wick | **kapanış** | Kohen'in kararı. İsabet profilinde %46.1 → %51.3, para profilinde bedeli var ama isabet onun önceliği. Tek input, iki profil için ortak. |
+
+Üçü birlikte, tek değişkenli testten sonra **açıkça bileşik olarak** ölçüldü:
+
+| Konfig | 2019-22 | 2023-25 | 2026 holdout | Temmuz | Sembol |
+|---|---|---|---|---|---|
+| eski ürün | +0.415R | +0.200R | +0.391R | −0.648R | 4/4 |
+| kanal 10 | +0.441R | +0.202R | +0.478R | −0.666R | 4/4 |
+| ADX 30 | +0.317R | +0.303R | +0.530R | −0.315R | 4/4 |
+| kanal10 + ADX30 | +0.291R | +0.283R | +0.537R | −0.315R | 4/4 |
+| **üçü birlikte** | **+0.447R** | **+0.305R** | **+0.432R** | **−0.515R** | **4/4** |
+
+Üçü birlikte, **dört dönemin dördünde de** eski ürünü geçen tek konfigürasyon. `kanal10 +
+ADX30` holdout'ta ve Temmuz'da daha iyi ama geliştirme döneminde eski ürünün **altında** —
+kural 3'e göre seçilemez.
+
+### Grafikte doğrulama (2026 Oca–Haz, dört sembol)
+
+Para profili, iki stop onayı yan yana:
+
+| Sembol | Candle close | Wick touch |
+|---|---|---|
+| BTC | 32t · %25.0 · +16.77R | 32t · %25.0 · **+24.21R** |
+| ETH | 26t · %23.1 · +7.13R | 29t · %20.7 · +8.83R |
+| BNB | 28t · %21.4 · +4.96R | 29t · %20.7 · +8.49R |
+| SOL | 26t · %30.8 · +25.26R | 26t · %30.8 · **+29.74R** |
+| **Toplam** | 112t · %25.0 · **+54.12R** | 116t · %24.1 · **+71.27R** |
+
+**Ölçüm BNB ve BTC'de üç ondalık basamağa kadar tuttu:** panel +0.177R / +0.524R, ölçüm
++0.177R / +0.524R. ETH ve SOL'de panel ölçümden **iyi** çıktı, yani ölçüm muhafazakâr.
+
+Wick para profilinde önde ama candle close isabet profilinde önde, ve `Stop confirmation` tek
+input — iki profil için ayrı seçilemiyor. Kohen isabeti öncelediği için candle close default.
+
+### İsabet profili yapı değiştikten sonra baştan ölçüldü
+
+Eski ödül hedefi (rr 2) **eski yapıya karşı** seçilmişti, o yüzden taşınamazdı. Altı çıkış
+şekli × altı ödül hedefi birlikte tarandı (`run-winrate-axes.mjs`) — tek başına ödül taramak
+anlamsız, çünkü 1.5R'de kurulan trailing 2R üstündeki her hedefi ulaşılmaz kılıyor.
+
+Seçim ölçütü **kazanan işlem sayısı**: hem işlem sayısını hem isabeti aynı anda ölçen tek sayı,
+ve Kohen'in önceliği o.
+
+| Ayar | İşlem | İsabet | Kazanan işlem | Kârda sembol |
+|---|---|---|---|---|
+| eski yapı + eski profil | 270 | %42.2 | **114** | 2/4 |
+| **yeni yapı + rr 1.25 + trail 1/0.5** | 193 | **%56.5** | **109** | **4/4** |
+| yeni yapı + rr 3 + trail 1.5/1 | 160 | %51.2 | 82 | 4/4 |
+
+Beş kazanan işlem eksik, on dört puan fazla isabet, ve zarar eden sembol kalmıyor.
+
+Reddedilen: rr 3 + trail 1.5/1 beklentide en iyi (+0.222R) ama 82 kazanan işlem. Beklentiyi
+büyütmek isteyen için doğru ayar, isabet profili için yanlış — zaten rr 6'lık bir para profili
+var, ikincisine gerek yok.
+
+Pencere 3'te kaldı: 1/3/5/10 ölçüldü, pencere 1 holdout'ta +0.005R'ye çöküyor çünkü filtrelerin
+kırılma mumunda hazır olmasını şart koşuyor.
+
+### Bu incelemede reddedilen büyük fikirler
+
+4 saatlik grafik, üst zaman dilimi 200, mum içi giriş, limit giriş. Hepsi yukarıdaki
+**Ölçülmüş ve reddedilmiş fikirler** bölümünde, giriş modeli araştırması ayrı bir başlıkta.
+
+MACD ölçülebilir hiçbir katkı sağlamıyor ama **kalıyor** — kullanıcıya gösterilen bir filtre,
+kaldırmak ürün kararı.
+
+### Açık kalan iki not
+
+**BTC bu değişikliğin bedeli.** Eski ayarda en iyi semboldü (+1.131R), yeni ayarda yarısını
+veriyor. Kanal 10 ve ADX 30 onun kazandığı işlemleri eliyor. Kazanç SOL ve ETH'den geliyor.
+
+**Temmuz hâlâ zararda** (−0.515R). Hiçbir varyant o ayı kurtarmıyor; en iyisi ADX 30 tek
+başına −0.315R veriyor, o da 10 işlemde.
+
+**Bir dürüstlük notu:** yapı seçilirken 21 varyant denendi. Bir varyantın dört dönemde de
+rastgele kazanma şansı kabaca ½⁴ = %6, yani 21 denemede şans eseri ~1.3 tane beklenir ve tam
+1 tane bulundu. Buna karşı duran şeyler: üç bileşenin ikisi tek başına da kazandı, her birinin
+mekanik gerekçesi var, ve grafikte dört sembolde birden doğrulandı. Yine de bu "kanıtlandı"
+değil, "ölçüldü ve grafikte tutarlı çıktı" seviyesinde.
+
+### Kilit nasıl korunuyor
+
+`tests/profile-selector.test.ts` — hem `locked presets` bölümü (iki profil), hem ayrı bir test
+**üç yapısal ayarı** sabitliyor (kanal 10, ADX 30, kapanış stopu) ve derlenen script'te de
+kontrol ediyor. Sadece profilleri kilitlemek yetmezdi: ödül hedefi sabit kalırken kanal
+uzunluğu sessizce 20'ye dönebilirdi ve ölçüm ürünü anlatmayı bırakırdı.
+
+---
+
+## Eski ölçüm kaydı — Breakout Momentum (kilitleme öncesi)
+
+`breakout_momentum` · 60 dakika · kırılma kanalı 20 · ADX 20 · wick stop · ATR×2
 
 - **Para profili:** risk/ödül 6
-- **İsabet profili:** risk/ödül 2, trailing 1.5/1, pencere 3
+- **Eski isabet profili:** risk/ödül 2, trailing 1.5/1, pencere 3
 
 | Dönem | Para profili | İsabet profili |
 |---|---|---|
@@ -499,9 +623,11 @@ bölümde.
 - Para profili 2026 Oca-Haz'da dört sembolde de artıda.
 - Temmuz'da 19 işlemde 1 kazanan. Örneklem çok küçük ama sonuç kötü.
 - Ölçülmüş alternatif: 2023-2024'ten seçilen adx30/atr2 ayarı 2026 Oca-Haz'da +0.598R
-  veriyor (mevcut +0.391R), ama Temmuz'da −0.315R.
+  veriyor (mevcut +0.391R), ama Temmuz'da −0.315R. **İncelemede bu iz takip edildi ve ADX 30
+  gerçekten kazandı** — o satır doğru yere işaret ediyormuş.
 
-**Durum:** ölçüm hazır, sıra bekliyor.
+Bu bölüm kilitleme öncesi durumu kayıt için tutuluyor. Geçerli ayar yukarıdaki kilitli
+bölümde.
 
 ---
 
@@ -738,6 +864,91 @@ Bu preset'ler üzerinde denenip **uygulanmayan** her şey, bir daha aynı yoldan
 | Skor modunu açmak | İşlem %63 artıyor, beklenti artıdan eksiye düşüyor |
 | Seçimi 2023-2024'ten yapmak | 5 preset'te iyi, 4'ünde kötü — genel kural değil |
 | Risk/ödül 0.5-1 (yüksek isabet) | %70+ isabet gerçek, ama Temmuz'da hepsi zararda |
+| **Mum içi giriş** (kırılma anında al) | Fiyat farkı sıfır: 2659 sinyalde mum içi giriş sadece %45 daha iyi fiyat, ortalama +0.008R. Dört dönemin 1'inde iyi. Aşağıda ayrıntı. |
+| **Limit giriş** (geri çekilmeyi bekle) | Hiçbir varyant dört dönemde market'i geçmiyor. Dolum %28-48'e düşüyor ve kaçırdığı işlemler çalışan kırılmalar. Aşağıda ayrıntı. |
+| 4 saatlik grafiğe taşımak (Breakout M.) | Geliştirme ve doğrulamada bütün varyantların en iyisi (+0.521R / +0.276R), holdout'ta +0.112R ve iki anlamlı sembolün sıfırı artıda. Örneklem dışında çöküyor. |
+| MACD'yi kaldırmak (Breakout M.) | Ölçülebilir hiçbir fark yok (+0.421 / +0.192 / +0.386 vs +0.415 / +0.200 / +0.391). Kaldırılabilir ama kullanıcıya gösterilen bir filtre olduğu için Kohen kalsın dedi. |
+| Üst zaman dilimi uzunluğu 200 (Breakout M.) | Üç dönemde iyi, Temmuz'da −1.016R. |
+
+---
+
+## Giriş modeli araştırması — iki fikir, ikisi de tutmadı (26 Temmuz 2026)
+
+Kohen bir SOL grafiğinde şunu gösterdi: fiyat büyük bir saatlik mumun içinde direnci kırdı,
+gösterge girişi **bir sonraki saatin açılışında** yaptı — hareketin tepesinde — ve stop oldu.
+Kırılma olduğu anda görülebilirdi, script mumun kapanmasını bekledi.
+
+Bu haklı bir şikayetti ve tuning sorusu değil, **giriş modelinin kendisi** sorusuydu. Bu
+projenin ürettiği bütün sayılar o geç girişi ölçüyor. İki yönde çözüm denendi.
+
+### 1. Mum içi giriş — erken al
+
+Filtreler ve seviyeler son kapanmış saatlik mumdan, kesişme anı 5 dakikalık mumlardan.
+İleriye bakma yok, çünkü seviye önceden belli ve 5 dakikalık mum da kapanıyor.
+`engine.mjs` içinde `buildIntrabarSignals`, ölçüm `run-intrabar-entry.mjs`.
+
+| Dönem | Mum kapanışı | Mum içi |
+|---|---|---|
+| 2019-22 | +0.447R | +0.396R |
+| 2023-25 | +0.305R | +0.292R |
+| 2026 holdout | +0.432R | **+0.611R** |
+| Temmuz | −0.515R | −0.943R |
+
+Dört dönemin birinde iyi. İsabet profilinde de aynı desen.
+
+**Kararı veren sayı bu:** 2659 sinyalde iki girişin fiyatı yan yana konuldu — aynı sinyal, iki
+fiyat, başka hiçbir fark yok. **Mum içi giriş sadece %45 oranında daha iyi fiyat aldı,
+ortalama kazanç +0.008R.** Yani sıfır. %55 oranında beklemek daha iyi fiyat verdi, çünkü
+kırılmaların çoğu geri çekiliyor.
+
+Karşılaştırmanın kirli yeri: mum kapanışı modeli tetikleyici penceresi 3 kullanıyor, mum içi
+modelde pencere yok. Yani iki fark var, sadece giriş anı değil. İşlem sayıları yakın (701'e
+704) olduğu için etki küçük görünüyor ama temiz bir A/B değil. Temiz olan tek şey +0.008R.
+
+**Ayrıca:** mum içi giriş sadece **fiyat seviyesi kırılması** olan tetikleyicilerde anlamlı —
+kırılma, EMA geri alma, VWAP geri alma. `ema_cross` ve `supertrend_flip` gösterge durumu
+değişimi, mum kapanmadan olmaz. Yani Fast EMA Scalper ve Supertrend Volume bundan etkilenmez.
+
+### 2. Limit giriş — geri çekilmeyi bekle
+
+Yukarıdaki "kırılmalar geri çekiliyor" bulgusunun doğal sonucu. Sinyal mumunun kapanışından
+riskin bir kesri kadar geride bekleyen emir, süre içinde fiyat gelirse doluyor.
+`engine.mjs` içinde `simulate`'in opt-in dalı, ölçüm `run-entry-type.mjs`.
+
+| Giriş | 2019-22 | 2023-25 | holdout | Temmuz | Dolum | Artıda |
+|---|---|---|---|---|---|---|
+| market | +0.447R | +0.305R | **+0.432R** | **−0.515R** | %55 | **4/4** |
+| limit 0.25×R | +0.479R | +0.414R | +0.274R | −0.495R | %48 | 4/4 |
+| limit 0.5×R | +0.628R | +0.353R | +0.182R | −1.253R | %39 | 3/4 |
+| limit 0.75×R | +0.624R | +0.561R | +0.591R | −1.102R | %28 | 2/4 |
+
+Hiçbiri dört dönemde market'i geçmiyor.
+
+**Desen:** geri çekilme mesafesi arttıkça geliştirme dönemi sürekli iyileşiyor, ama dolum
+oranı çöküyor ve artıda sembol sayısı düşüyor. 0.75×R'de holdout iyi görünüyor (+0.591R) ama
+o sonuç ETH'nin **12 işleminden** geliyor (+1.738R); BNB aynı ayarda −0.138R.
+
+**Sebebi seçim yanlılığı.** Fiyatın geri gelmediği kırılmalar tam olarak çalışan kırılmalar.
+Limit emri onları sistematik olarak kaçırıyor, geride kalanların ortalaması iyi görünüyor.
+BNB'de net: market +0.177R (28 işlem), limit 0.5×R −0.566R (19 işlem) — dolan 19, dolmayan
+9'dan kötü.
+
+### Sonuç
+
+İki fikir zıt yönde ve ikisi de kazandırmıyor. **Mevcut giriş modeli — mum kapanışında karar,
+sonraki açılışta al — bu preset için zaten iyi bir denge.** Grafikteki tek kötü giriş gerçek
+ama sistematik değil.
+
+**Motorda kalan altyapı:** `buildIntrabarSignals` ve `simulate`'in limit dalı duruyor, ikisi de
+opt-in. Market yolu bit bit aynı kaldı — Balanced Intraday'in kayıtlı dört sayısıyla
+doğrulandı (151t %19.2 +0.138R ve 711t %49.2 +0.086R, ikisi de değişmedi). Başka bir preset
+için tekrar sorulursa araç hazır, ama **Pine tarafına hiç dokunulmadı**: `request.security_lower_tf`
+üründe yok ve mum içi girişin parity'si hiç yapılmadı. Ölçüm o yüzden "bu fikir tutmuyor"
+demek için yeterli, "bunu ürüne koyalım" demek için değil.
+
+**Öğrenilen kısıt:** 1 saatlik grafikte 5 dakikalık mum içi veri TradingView Basic'te 17 gün
+geriye gidiyor (5000 mum × 5 dakika). 15 dakikalık 52 gün, 1 saatlik 208 gün. Mum içi bir
+şeyin parity'si bu pencerelerle sınırlı.
 
 ---
 
@@ -745,6 +956,16 @@ Bu preset'ler üzerinde denenip **uygulanmayan** her şey, bir daha aynı yoldan
 
 - Ölçüm kaynağı: `research/preset-sweep/measure-shipping-state.mjs`, çıktısı
   `research/preset-sweep/shipping-state.md`
+- Bir preset'in **kendi yapısını** taramak için `run-structure-axes.mjs` — kırılma uzunluğu,
+  zaman dilimi, EMA'lar, MACD, stop onayı, üst zaman dilimi, ADX. Tek değişkenli, dört dönem.
+  Bu eksenler 26 Temmuz 2026'ya kadar hiçbir taramada yoktu; o güne kadar sadece ödül hedefi,
+  çıkış yönetimi ve dört filtre eşiği taranmıştı.
+- Bir preset'in **isabet profilini** yapı değiştikten sonra baştan ölçmek için
+  `run-winrate-axes.mjs`. Ödül hedefini altı farklı çıkış şekliyle birlikte tarıyor, tek
+  başına değil — 1.5R'de kurulan bir trailing 2R üstündeki her hedefi ulaşılmaz kıldığı için
+  tek bir trailing ayarında ölçülen ödül ızgarası başka bir trailing için hiçbir şey söylemez.
+- Giriş anı ve giriş tipi için `run-intrabar-entry.mjs` ve `run-entry-type.mjs` (ikisi de
+  reddedildi, yukarıdaki bölüme bakın).
 - Temmuz verisi: `research/preset-sweep/data-july/`, 100 dosya, her biri Binance'in
   yayınladığı SHA-256 ile doğrulanmış
 - Semboller hiçbir tabloda birleştirilmez. Tek sembolün taşıdığı bir sonuç, sonuç değildir.

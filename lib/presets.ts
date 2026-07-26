@@ -155,18 +155,91 @@ export const presets: StrategyConfig[] = [
     risk: { ...defaultConfig.risk, riskReward: 5 },
     winRateProfile: winRate({ triggerWindow: 10, riskReward: 1.25, trailStartR: 0 })
   }),
-  // holdout 2026: 168 trades, 22.0% win, +0.412R per trade
-  // Win-rate profile, holdout 2026: 269 trades, 42.4% win, +0.083R. SOL negative. This is
-  // the preset where the trade-off is starkest: nearly double the hit rate for a fifth of
-  // the money, on the one preset whose money profile clears two sigma in validation.
+  // LOCKED 26 July 2026 — the only preset whose review changed its structure rather than just
+  // its reward target: breakout channel 20 -> 10, ADX threshold 20 -> 30, stop confirmation
+  // wick -> candle close. Read on all four symbols in TradingView against the 2026 holdout.
+  // See research/preset-sweep/PRESET-REVIEW-PLAN.md
+  //
+  // Reviewed differently from the three before it, and that is the point. Those three moved
+  // one knob, the reward target, because that was the only axis any sweep had ever covered.
+  // This one had its own settings measured for the first time — channel length, chart
+  // timeframe, moving averages, MACD, stop confirmation, higher-timeframe length — because a
+  // breakout system's channel length is the number that decides what it *is*, and it had been
+  // a hand-picked 20 since the first version.
+  //
+  // Also measured and rejected on this preset: moving it to a 4-hour chart (best of every
+  // variant in development and validation, collapses out of sample), higher-timeframe length
+  // 200 (good in three periods, -1.016R in July), entering inside the candle, and resting a
+  // limit order below the break. The last two were attempts to fix a real complaint — an entry
+  // landing at the top of a large candle — and neither survived measurement. Details in the
+  // plan; the short version is that entering earlier gains nothing on average (+0.008R across
+  // 2659 signals) and waiting for a pullback only filters out the breakouts that worked.
+  //
+  // MACD contributes nothing measurable (+0.421R against +0.415R in development, the same
+  // through every period) and is kept anyway: it is a filter the product shows the user, and
+  // removing it is a product decision rather than a measurement one.
+  //
+  // Measured by run-structure-axes.mjs, single-variable first and then as an explicit
+  // combination. It is the only configuration in this study that beats the shipping settings
+  // in all four periods at once, on all four symbols:
+  //   shipping:  dev +0.415R | val +0.200R | holdout +0.391R | July -0.648R
+  //   candidate: dev +0.447R | val +0.305R | holdout +0.432R | July -0.515R
+  // Hit rate rises with it (22.0% -> 25.1% development, 21.6% -> 23.7% holdout) and SOL goes
+  // from +0.181R to +0.819R on the holdout. It costs a third of the signals: 6.6 trades per
+  // symbol per month becomes about 4.5.
+  //
+  // Two honest caveats. Twenty-one variants were tried, and one winning all four periods is
+  // roughly what chance alone predicts at that count, so this is "worth testing on the chart",
+  // not "established". And July is still a loss, just a smaller one — nothing measured on
+  // this preset makes that month profitable.
+  //
+  // The rival candidate is the same thing without the close-confirmed stop: better on the
+  // holdout (+0.537R) and on July (-0.315R) but below the shipping settings in development
+  // (+0.291R), which is the only partition selection is allowed to use. It is reachable on
+  // the chart by switching Stop confirmation back to "Wick touch", so both can be read in
+  // one session without regenerating the script.
+  //
+  // The win-rate profile was re-measured against this structure rather than carried over, and
+  // it moved: reward 1.25 with a tight trailing stop that arms at 1R and follows half an R
+  // behind, instead of reward 2 with a 1.5R/1R trail. The reward grid was swept against six
+  // exit shapes, not on its own, because a trail arming at 1.5R makes every target past ~2R
+  // unreachable and a reward measured at one trail says nothing about another.
+  //
+  // Chosen on the count of winning trades, which is the one number that moves with both the
+  // trade count and the hit rate at once. Holdout 2026, four symbols:
+  //   old structure, old profile:  270 trades, 42.2% win, 114 winners, 2 of 4 symbols positive
+  //   this structure, this profile: 193 trades, 56.5% win, 109 winners, 4 of 4 positive
+  // Five fewer winning trades, fourteen more points of hit rate, and no symbol left losing.
+  // The tight trail is what lifts the hit rate: it locks small gains early, which is also why
+  // expectancy is only +0.086R. This profile wins often and wins little, on purpose — the
+  // money profile at reward 6 is where the size lives.
+  //
+  // Rejected: reward 3 with the 1.5R/1R trail reaches +0.222R and 51.2%, the best expectancy
+  // of any win-rate candidate, but only 82 winning trades. It is the better setting for
+  // someone optimising expectancy and the wrong one for this profile's purpose.
+  //
+  // Trigger window stays at 3. Measured 1/3/5/10 against reward 3 + trail 1.5/1: window 1
+  // collapses to +0.005R on the holdout because it demands the filters agree on the breakout
+  // bar itself, and 5 and 10 give up expectancy for volume. Not re-swept for this exact
+  // reward-and-trail pair.
+  //
+  // What this preset is, after the review: the sparsest of the locked four at about 4.5 trades
+  // per symbol per month, and the one with the largest expectancy. It is carried by SOL and
+  // ETH. BTC is the loss the change took: it was the best symbol on the old settings (+1.131R)
+  // and gives up roughly half of that, because a ten-bar channel and an ADX gate at 30 filter
+  // out the trades it was winning.
+  //
+  // Previous shipping numbers, for comparison:
+  //   holdout 2026: 168 trades, 22.0% win, +0.412R per trade
+  //   win-rate profile, holdout 2026: 269 trades, 42.4% win, +0.083R, SOL negative
   preset({
     presetId: "breakout_momentum", name: "Breakout Momentum",
     chartTimeframe: "60", triggerWindow: 3, entryTrigger: "breakout",
-    trend: { ...defaultConfig.trend, emaFast: 20, emaSlow: 50, vwapEnabled: false, breakoutLength: 20 },
-    momentum: { ...defaultConfig.momentum, macdEnabled: true, adxEnabled: true },
+    trend: { ...defaultConfig.trend, emaFast: 20, emaSlow: 50, vwapEnabled: false, breakoutLength: 10 },
+    momentum: { ...defaultConfig.momentum, macdEnabled: true, adxEnabled: true, adxThreshold: 30 },
     volume: { ...defaultConfig.volume, multiplier: 1.5 },
-    risk: { ...defaultConfig.risk, riskReward: 6 },
-    winRateProfile: winRate({ triggerWindow: 3 })
+    risk: { ...defaultConfig.risk, stopTrigger: "close", riskReward: 6 },
+    winRateProfile: winRate({ triggerWindow: 3, riskReward: 1.25, trailStartR: 1, trailDistanceR: 0.5 })
   }),
   // holdout 2026: 135 trades, -0.208R per trade. Measured and did NOT hold.
   // Win-rate profile, holdout 2026: 146 trades, 33.6% win, -0.028R. Neither profile held.

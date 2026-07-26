@@ -11,6 +11,12 @@ const WIN_RATE = "Win rate (more wins)";
 
 const withProfile = presets.filter((preset) => preset.winRateProfile);
 
+// Pine types a float input as float, so the compiler writes whole numbers with one decimal
+// and leaves fractional ones alone. Calling toFixed(1) instead would look for "1.3" when the
+// profile asks for 1.25 — which is exactly how a reward target of 1.25 broke this file three
+// times. One definition, used everywhere a compiled reward is matched.
+const asFloat = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : String(value));
+
 describe("profile selector", () => {
   it("ships a measured alternative for every preset that defines a stop and a target", () => {
     const measurable = presets.filter(
@@ -51,11 +57,6 @@ describe("profile selector", () => {
 
       // Every win-rate profile in the set is a lower reward target, so this is the one
       // field guaranteed to differ and the switch must always reach it.
-      // Pine types a float input as float, so the compiler writes whole numbers with one
-      // decimal and leaves fractional ones alone. Matching on toFixed(1) would look for
-      // "1.3" when the profile asks for 1.25.
-      const asFloat = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : String(value));
-
       it("routes risk/reward through the profile", () => {
         expect(profile.riskReward).not.toBe(preset.risk.riskReward);
         expect(code).toMatch(
@@ -164,6 +165,16 @@ describe("profile selector", () => {
           signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 10,
           riskReward: 1.25, breakEvenAtR: 0, trailStartR: 0, trailDistanceR: 1
         }
+      },
+      // The one preset whose structure changed, so the lock covers more than the two profiles:
+      // the breakout channel, the ADX gate and the stop confirmation are pinned in the
+      // structure test below, because those three are what the review actually decided.
+      breakout_momentum: {
+        money: { riskReward: 6, breakEvenAtR: 0, trailStartR: 0 },
+        winRate: {
+          signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 3,
+          riskReward: 1.25, breakEvenAtR: 0, trailStartR: 1, trailDistanceR: 0.5
+        }
       }
     };
 
@@ -182,11 +193,29 @@ describe("profile selector", () => {
 
       it(`${id} compiles both reviewed profiles into the script`, () => {
         const code = indicator(preset);
-        const asFloat = (value: number) => (Number.isInteger(value) ? value.toFixed(1) : String(value));
         expect(code).toContain(`? ${asFloat(expected.money.riskReward!)} :`);
         expect(code).toContain(`? ${asFloat(expected.winRate.riskReward)} :`);
       });
     }
+
+    // Breakout Momentum is the only reviewed preset where the decision was about the shape of
+    // the setup rather than the reward target, so its lock has to cover the three settings the
+    // review actually moved. Without this the reward target could stay pinned while the channel
+    // length quietly went back to 20 and the whole measurement would stop describing the product.
+    it("keeps the three structural settings Breakout Momentum's review changed", () => {
+      const preset = presets.find((item) => item.presetId === "breakout_momentum") as StrategyConfig;
+      expect(preset.trend.breakoutLength).toBe(10);
+      expect(preset.momentum.adxThreshold).toBe(30);
+      expect(preset.risk.stopTrigger).toBe("close");
+      // MACD measures as contributing nothing and is kept as a product decision; if it is ever
+      // removed that should be a deliberate change with this line updated, not a silent one.
+      expect(preset.momentum.macdEnabled).toBe(true);
+
+      const code = indicator(preset);
+      expect(code).toContain('breakoutLen = input.int(10,');
+      expect(code).toContain('adxThreshold = input.float(30,');
+      expect(code).toContain('stopConfirmation = input.string("Candle close"');
+    });
   });
 
   describe("which profile the script opens with", () => {
@@ -208,8 +237,8 @@ describe("profile selector", () => {
       for (const active of ["money", "win_rate"] as const) {
         const code = indicator({ ...preset, activeProfile: active });
         expect(code).toContain(`options=["${MONEY}", "${WIN_RATE}", "Custom (use inputs below)"]`);
-        expect(code).toContain(`? ${preset.risk.riskReward.toFixed(1)} :`);
-        expect(code).toContain(`? ${preset.winRateProfile!.riskReward.toFixed(1)} :`);
+        expect(code).toContain(`? ${asFloat(preset.risk.riskReward)} :`);
+        expect(code).toContain(`? ${asFloat(preset.winRateProfile!.riskReward)} :`);
       }
     });
   });
