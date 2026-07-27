@@ -117,10 +117,6 @@ This is a standard Next.js App Router project. Vercel detects it automatically w
 
 Add `vercel.json` only if the project later needs deployment-specific behavior such as custom rewrites, headers, cron jobs or nonstandard build settings.
 
-## Repository hygiene
-
-The public repository contains the application, its core tests and the assets needed to run it. Large exploratory research runs, generated reports, local snapshots and source artwork are intentionally kept in ignored local folders and are not part of the public history.
-
 ## Security
 
 Please read [SECURITY.md](SECURITY.md) before reporting a vulnerability. Do not include API keys, credentials or private trading information in an issue.
