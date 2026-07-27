@@ -2,7 +2,10 @@
 
 > ## Yeni oturum buradan başlar
 >
-> **Sıradaki iş:** Selective Multi-Timeframe incelemesi (7. sıra, aşağıdaki tabloda).
+> **Sıradaki iş:** RSI Divergence Reversal incelemesi (8. sıra, aşağıdaki tabloda).
+>
+> Selective Multi-Timeframe kilitlendi; isabet profili yeni yapıya karşı henüz
+> tam ızgarayla taranmadı (`run-winrate-axes.mjs`), o da o preset'in açık işi.
 >
 > **İlk üç komut:**
 > ```
@@ -10,7 +13,7 @@
 > /Users/kohen/bin/safe-npm test
 > /Users/kohen/bin/safe-npm run dev -- -H 0.0.0.0
 > ```
-> 749 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
+> 754 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
 >
 > **Commit bekleyen değişiklikler stage'de.** Kohen commit'i kendi atar; Claude
 > `git commit`, `push`, `pull`, `fetch`, `reset`, `rebase` çalıştırmaz. Stage için
@@ -25,6 +28,10 @@
 > 1. **Sembolleri asla birleştirme.** Her sayı BTC/ETH/BNB/SOL ayrı raporlanır. Kripto
 >    sembolleri ~0.85 korelasyonlu; birleştirmek işlem sayısını şişirir, güven aralığını
 >    daraltmaz ve tek sembolün taşıdığı sonucu gizler.
+>    **Araç bunu artık zorluyor:** `research/preset-sweep/report.mjs` ortak raporlayıcıdır
+>    ve havuzlama yapan bir fonksiyon dışa açmaz. Onbir ölçüm aracı da ona bağlandı.
+>    Bu kural 27 Temmuz'da ihlal edildi ve suçlu araçtı — manşet satır havuzlanmıştı,
+>    sembol kırılımı dipnottaydı. Yanlış aday üretti.
 > 2. **İsabet oranı tek başına anlamsız.** Başabaş isabet `1/(1+rr)`. Ödül hedefini
 >    düşürünce isabet de eşik de aynı anda yükselir. Kâr, ikisi arasındaki farktan gelir.
 > 3. **Seçim sadece geliştirme döneminden.** Holdout'a bakarak konfig seçmek holdout'u
@@ -104,8 +111,8 @@ sayıları ölçümle uyuştuktan sonra kilitlenir.
 | 4 | Breakout Momentum | 6.6 | **KİLİTLENDİ** ✓ |
 | 5 | VWAP Reclaim | 7.1 | **KİLİTLENDİ** ✓ |
 | 6 | Swing Structure Trend | 2.2 | **KİLİTLENDİ** ✓ |
-| 7 | Selective Multi-Timeframe | 2.1 | **SIRADA** |
-| 8 | RSI Divergence Reversal | 5.3 | bekliyor |
+| 7 | Selective Multi-Timeframe | 5.5 | **KİLİTLENDİ** ✓ |
+| 8 | RSI Divergence Reversal | 5.3 | **SIRADA** |
 | 9 | Long-Term Trend Guard | 1.9 | bekliyor |
 | — | Spot Accumulation | — | ölçülemez (stop/hedef yok) |
 
@@ -987,51 +994,102 @@ onaylı tepe ve dip) kullanıyor. Gerekçe: eski hali doğrulamada −0.105R ve 
 
 ---
 
-## 7. Selective Multi-Timeframe — bekliyor
+## 7. Selective Multi-Timeframe — ✅ KİLİTLENDİ (27 Temmuz 2026)
 
 `selective_multi_timeframe` · 60 dakika · tetikleyici penceresi 3 · ATR×2 · kapanış onaylı stop
 
-- **Para profili:** risk/ödül 6, trailing 2/1.5
-- **İsabet profili:** risk/ödül 2.5, trailing 1.5/1, pencere 3
+**Ne değişti:** üç yapı ayarı. Hiçbir profil değişmedi.
 
-| Dönem | Para profili | İsabet profili |
+| | önce | sonra |
 |---|---|---|
-| 2019-2022 | 331t · %50.8 · +0.638R | 349t · %57.6 · +0.497R |
-| 2023-2025 | 330t · %40.3 · +0.135R | 342t · %48.8 · +0.025R |
-| 2026 Oca-Haz | 56t · %42.9 · +0.269R | 56t · %50.0 · +0.080R |
-| 2026 Temmuz | 11t · %9.1 · −1.037R | 11t · %27.3 · −0.549R |
+| hacim çarpanı | 1.2 | **0.8** |
+| ADX filtresi | açık, eşik 20 | **kapalı** |
+| uzun MA filtresi | açık, SMA 100 | **kapalı** |
 
-**2026 Ocak-Haziran, sembol sembol:**
+### Bu inceleme önce ölçüm aracını kırdı
 
-| Sembol | Para profili | İsabet profili |
-|---|---|---|
-| BNBUSDT | 9t · %33.3 · +0.158R | 9t · %44.4 · −0.200R |
-| BTCUSDT | 15t · %26.7 · −0.572R | 15t · %46.7 · −0.045R |
-| ETHUSDT | 16t · %62.5 · +0.571R | 16t · %62.5 · +0.305R |
-| SOLUSDT | 16t · %43.8 · +0.819R | 16t · %43.8 · +0.131R |
+İlk tarama bu preset'in 2026 holdout'unda `+0.269R` diyordu. O sayı dört sembolün
+havuzlanmış hâliydi. Sembol sembol bakınca BTC 15 işlemde **−0.572R**, BNB 9 işlemde
++0.158R — yani tek sembolün taşıdığı, diğer üçünde kullanılamayan bir preset.
 
-**2026 Temmuz, sembol sembol:**
+Havuzlanmış tablo aynı zamanda **yanlış aday** üretti: `htf uzunluk 50` üç dönemde
+referansı geçiyor göründü, sembol sembol bakınca dört sembolden **birinde** iyileşiyordu.
 
-| Sembol | Para profili | İsabet profili |
-|---|---|---|
-| BNBUSDT | 3t · %33.3 · −0.578R | 3t · %66.7 · +0.596R |
-| BTCUSDT | 3t · %0.0 · −1.237R | 3t · %0.0 · −1.237R |
-| ETHUSDT | 3t · %0.0 · −1.194R | 3t · %0.0 · −1.194R |
-| SOLUSDT | 2t · %0.0 · −1.188R | 2t · %50.0 · −0.265R |
+Bu, planın 1. kuralının ihlaliydi ve suçlu araçtı: her araç havuzlanmış satırı manşet
+yapıp sembol kırılımını dipnota atıyordu. Onbir aracın hepsi düzeltildi ve ortak bir
+`report.mjs` yazıldı — havuzlama yapacak bir fonksiyon **artık dışa açılmıyor**.
 
-**Dikkat edilecekler:**
+### Tek değişkenli tarama, sembol sembol (2026 Oca–Haz, isabet · işlem)
 
-- **Setin en yüksek isabetli preset'i:** isabet profili 2019-2022'de %57.6, 2023-2025'te
-  %48.8. ETH'de 2026 Oca-Haz'da %62.5.
-- Ama en seyrek olanlardan: ayda 2.1 işlem/sembol, 2026 Oca-Haz'da sembol başına 9-16 işlem.
-  İstatistiksel olarak hiçbir şey kanıtlanamaz.
-- Kapanış onaylı stop kullanıyor: mum stopun ötesinde kapanırsa kayıp 1R'den büyük olur.
-  Bu, likidite süpürmelerinde stop olmamayı sağlar ama sert dönüşlerde daha çok kaybettirir.
-- Ölçülmüş alternatif: risk/ödül 1.5, trailing kapalı → 2026 Oca-Haz'da %51.8 isabet ve
-  +0.175R, dört sembolde de artıda. Mevcut isabet profilinden her açıdan iyi ama Temmuz'da
-  −0.488R.
+| | BNB | BTC | ETH | SOL | iyileşen |
+|---|---|---|---|---|---|
+| referans | %33.3 · 9t | %26.7 · 15t | %62.5 · 16t | %43.8 · 16t | — |
+| **hacim 0.8** | %40.0 · 10t | %35.3 · 17t | %64.7 · 17t | %47.1 · 17t | **4/4** |
+| ADX kapalı | %39.1 · 23t | %37.5 · 32t | %58.6 · 29t | %44.4 · 27t | 3/4 |
+| uzun MA kapalı | referansla **birebir aynı** | | | | 0/4 |
+| chart 30dk | %47.1 · 17t | %46.2 · 26t | %38.5 · 26t | %46.9 · 32t | 3/4 |
+| adx 25 | %0.0 · 2t | %11.1 · 9t | %50.0 · 8t | %40.0 · 10t | 0/4 |
 
-**Durum:** ölçüm hazır, sıra bekliyor.
+`hacim 0.8` bütün taramanın **tek 4/4'ü** — dört sembolde birden hem isabeti hem işlem
+sayısını yükselten tek ayar. `uzun MA kapalı` dört sembolde ve dört dönemde referansla
+birebir aynı: hiçbir şeye karar vermeyen bir kontroldü.
+
+### Bileşik, ve grafikte doğrulama
+
+Kilitlenen bileşik: **hacim 0.8 + ADX kapalı + uzun MA kapalı.**
+
+TradingView'de dört sembolde okundu. İsabet profili (rr 2.5, trailing 1.5/1),
+2026-01-01 → 2026-07-27, eski ayarlara karşı **aynı profil ve aynı pencere**:
+
+| | | işlem | isabet | net |
+|---|---|---|---|---|
+| **ETH** | eski | 19 | %52.6 | +1.30R |
+| | **kilitli** | **40** | **%55.0** | **+9.81R** |
+| **BTC** | eski | 18 | %38.9 | **−4.38R** |
+| | **kilitli** | **42** | **%50.0** | **+7.09R** |
+| **BNB** | eski | 12 | %50.0 | −0.01R |
+| | **kilitli** | **36** | **%55.6** | **+14.42R** |
+| **SOL** | eski | 18 | %44.4 | +1.56R |
+| | **kilitli** | **38** | **%44.7** | **+3.86R** |
+
+Dört sembolde de işlem sayısı yaklaşık ikiye katlandı, dördünde de isabet yükseldi,
+dördü de artıda. BTC zarardan kâra geçti, BNB tam sıfırdan setin en iyi sembolü oldu.
+Eski hâli BNB'de altı ayda **12 işlem** üretiyordu — zaten kullanılabilir değildi.
+
+**Parite:** ETH, BNB ve SOL panelle ondalığına kadar aynı. BTC'de motor 42 işlemde bir
+tane fazla kayıp saydı (%50.0 / +7.09R, panelde %51.2 / +8.12R).
+
+### `sensitivity: "selective"` kaldırıldı
+
+O alan bir arayüz makrosu: bir değer seçmek cooldown, hacim çarpanı ve ADX eşiğini aynı
+anda eziyor. `"selective"` = cooldown 10, hacim 1.25, ADX 25. Preset bunların hiçbirinde
+değildi (cooldown 5, hacim 1.2, ADX 20) ve artık **ADX filtresi hiç yok**, yani o
+dropdown'daki hiçbir değer bu preset için doğru değil. Bırakmak, ayarlarının tam tersini
+iddia eden bir "More selective" etiketi göstermek olurdu.
+
+**Açık kalan not:** "Signal frequency" dropdown'ının kendisi hatalı bir kalıp — üç ayarı
+sessizce ezen bir makro. Ayrı bir karar konusu, bu kilitle çözülmedi.
+
+### Ölçülüp reddedilenler
+
+Zemin ikinci kez taranmasın diye kayıtta: ADX 25 ve 30 (geliştirmede daha iyi, örneklem
+2–10 işleme düşüyor, holdout'ta negatif), 30 dakikalık grafik (örneklemi açıyor ama ETH'nin
+isabetinden 24 puan götürüyor), 4 saatlik grafik, üst zaman dilimi uzunluğu 50/200/günlük,
+RSI 60/40, EMA 9/21 ve 50/100, wick stop onayı, hacim 1.25–2.0, ATR 2.5 ve 3.0.
+
+**MACD'nin tersi çıktı:** Breakout Momentum'da hiçbir şey yapmıyordu, burada taşıyıcı —
+kapatınca holdout +0.269R'den +0.060R'ye düşüyor. Kaldı.
+
+### Kilit nasıl korunuyor
+
+`tests/profile-selector.test.ts` — kilitli preset kaydına eklendi, ayrıca üç yapı ayarı
+ve `sensitivity` iddiası ayrı testlerle sabitlendi. Uzun MA testi çizgiye değil **vetoya**
+bakıyor: `spotExitMode` varsayılanı yüzünden çizgi hâlâ çiziliyor, ama `longSetup` satırında
+artık yok.
+
+**Sıradaki:** isabet profili yapı değiştiği için planın kendi kuralına göre baştan
+ölçülmeli (`run-winrate-axes.mjs`). Şu anki rr 2.5 + trailing 1.5/1 yeni yapıda dört
+sembolde de başabaşın çok üstünde, ama tam ızgara taranmadı.
 
 ---
 

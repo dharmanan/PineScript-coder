@@ -202,6 +202,15 @@ describe("profile selector", () => {
           signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 5,
           riskReward: 1.25, breakEvenAtR: 0, trailStartR: 1, trailDistanceR: 0.5
         }
+      },
+      // Both profiles unchanged: this review moved the structure, not the reward target. The
+      // three settings it did move are pinned separately below, because they are the decision.
+      selective_multi_timeframe: {
+        money: { riskReward: 6, breakEvenAtR: 0, trailStartR: 2 },
+        winRate: {
+          signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 3,
+          riskReward: 2.5, breakEvenAtR: 0, trailStartR: 1.5, trailDistanceR: 1
+        }
       }
     };
 
@@ -261,6 +270,44 @@ describe("profile selector", () => {
       expect(code).toContain('volumeMultiplier = input.float(1.5,');
       // The plain-language text must not call an open window a restriction.
       expect(code).not.toContain("0930-1600");
+    });
+
+    // Selective Multi-Timeframe's review was structural too, and all three of its settings are
+    // the kind that read as harmless defaults. They are not. On the win-rate profile over
+    // 2026-01-01 to 2026-07-27 the shipping settings gave BTC 18 trades at 38.9% for -4.38R and
+    // BNB 12 trades at 50.0% for -0.01R; these three give BTC 42 at 50.0% for +7.09R and BNB 36
+    // at 55.6% for +14.42R, with the trade count roughly doubling on all four symbols.
+    it("keeps the three structural settings Selective Multi-Timeframe's review changed", () => {
+      const preset = presets.find((item) => item.presetId === "selective_multi_timeframe") as StrategyConfig;
+      expect(preset.volume.multiplier).toBe(0.8);
+      expect(preset.momentum.adxEnabled).toBe(false);
+      // Measurably dead: switching it off was identical to the reference on every symbol and
+      // every period, so it was a control in the form that decided nothing.
+      expect(preset.trend.longMaEnabled).toBe(false);
+      // MACD is the opposite case here — switching it off cost the holdout most of its edge —
+      // so it stays, and a future change to it has to be deliberate.
+      expect(preset.momentum.macdEnabled).toBe(true);
+
+      const code = indicator(preset);
+      expect(code).toContain('volumeMultiplier = input.float(0.8,');
+      expect(code).not.toContain("adxThreshold = input.float(");
+      // The long MA stays on the chart as a drawn line, because spotExitMode keeps it compiled.
+      // What the review removed is its veto, so the assertion is about the setup line rather
+      // than the plot: the average may be shown, it may not decide which signals survive.
+      const longSetup = code.split("\n").find((row) => row.startsWith("longSetup = "));
+      expect(longSetup).toBeDefined();
+      expect(longSetup).not.toContain("longMa");
+      expect(longSetup).not.toContain("adxValue");
+    });
+
+    // The "Signal frequency" dropdown is a macro: picking a value overwrites the cooldown, the
+    // volume multiplier and the ADX threshold at once. A preset that names one is claiming to be
+    // in that state. This one has no ADX gate at all, so no value on that dropdown is true of it,
+    // and naming "selective" would put the opposite of its settings on the form.
+    it("does not claim a signal-frequency macro it is not in", () => {
+      const preset = presets.find((item) => item.presetId === "selective_multi_timeframe") as StrategyConfig;
+      expect(preset.sensitivity).toBe(defaultConfig.sensitivity);
+      expect(preset.momentum.adxEnabled).toBe(false);
     });
 
     // 4H Swing Trend's review found its SMA-200 was vetoing nothing — switching it off moved 364

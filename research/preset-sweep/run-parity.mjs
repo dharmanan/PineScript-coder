@@ -37,6 +37,14 @@ let preset = args.htf
 // Wick or close confirmation changes how often a stop fires, which at a high reward
 // target is the difference between a winner and a loser, so it must be selectable.
 if (args.stopTrigger) preset = { ...preset, risk: { ...preset.risk, stopTrigger: args.stopTrigger } };
+// A review reads a candidate structure on the chart before it is a product decision, and a
+// candidate the parity tool cannot reach is a candidate whose panel reading cannot be checked.
+// These three are the filters the PineForge form can switch off or loosen without touching code.
+if (args.volumeMultiplier) {
+  preset = { ...preset, volume: { ...preset.volume, multiplier: Number(args.volumeMultiplier) } };
+}
+if (args.adx === "off") preset = { ...preset, momentum: { ...preset.momentum, adxEnabled: false } };
+if (args.longMa === "off") preset = { ...preset, trend: { ...preset.trend, longMaEnabled: false } };
 const timeframe = TIMEFRAMES.find((item) => item.id === timeframeId);
 if (!timeframe) throw new Error(`Unknown timeframe: ${timeframeId}`);
 

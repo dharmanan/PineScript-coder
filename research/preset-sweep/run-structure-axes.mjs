@@ -20,6 +20,7 @@ import { buildBehaviorPlan, presets } from "./generated/preset-config.mjs";
 import { TIMEFRAMES, aggregate, intervalMs, splitContiguous } from "./data.mjs";
 import { loadAll, partitionOf, partitionsFor } from "./dataset.mjs";
 import { buildSeries, buildSignals, simulate } from "./engine.mjs";
+import { createReporter } from "./report.mjs";
 
 const arg = (name, fallback) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;
 const target = arg("preset");
@@ -72,16 +73,8 @@ const measure = (config) => {
       }
     }
   }
-  const totals = Object.fromEntries(PERIODS.map((p) => [p, symbols.flatMap((s) => perSymbol.get(s)[p])]));
-  return { totals, perSymbol };
+  return { perSymbol };
 };
-
-const stat = (values) => {
-  if (!values.length) return null;
-  const wins = values.filter((v) => v > 0).length;
-  return { trades: values.length, winRate: wins / values.length, expectancy: values.reduce((a, b) => a + b, 0) / values.length };
-};
-const cell = (s) => (s ? `${String(s.trades).padStart(5)}t %${(s.winRate * 100).toFixed(1).padStart(5)} ${(s.expectancy >= 0 ? "+" : "") + s.expectancy.toFixed(3)}R` : "        —         ");
 
 // Deep enough for the nested groups a preset config actually uses; each variant is built
 // from the shipping config so an unlisted field can never drift between variants.
@@ -187,6 +180,23 @@ const AXES = [
 // Left empty rather than guessed: a combination measured before the isolated results are in
 // is a search, and this file exists to avoid searching.
 const combosFor = (presetId) => ({
+  // Volume 0.8 was the only isolated axis in this preset's whole sweep that raised both the hit
+  // rate and the trade count on all four symbols at once, so every pairing starts from it. The
+  // long moving average is measurably dead here — its off row is byte-identical to the reference
+  // on every symbol and every period — so pairing it costs nothing and removes a control that
+  // claims to do something. ADX off is the axis that actually opens the sample: it is the only
+  // other row that leaves all four symbols readable, and unlike the 30-minute chart it does not
+  // cut ETH's hit rate by twenty-four points to get there.
+  selective_multi_timeframe: [
+    ["hacim0.8 + uzunMA kapali", variant({ volume: { multiplier: 0.8 }, trend: { longMaEnabled: false } })],
+    ["hacim0.8 + ADX kapali", variant({ volume: { multiplier: 0.8 }, momentum: { adxEnabled: false } })],
+    ["hacim0.8 + uzunMA + ADX kapali", variant({
+      volume: { multiplier: 0.8 }, trend: { longMaEnabled: false }, momentum: { adxEnabled: false }
+    })],
+    ["hacim0.8 + adx 15", variant({ volume: { multiplier: 0.8 }, momentum: { adxThreshold: 15 } })],
+    ["hacim0.8 + atr 1.5", variant({ volume: { multiplier: 0.8 }, risk: { atrMultiple: 1.5 } })],
+    ["hacim0.8 + chart 30dk", variant({ volume: { multiplier: 0.8 }, chartTimeframe: "30" })]
+  ],
   breakout_momentum: [
     ["kirilma10 + adx30", variant({ trend: { breakoutLength: 10 }, momentum: { adxThreshold: 30 } })],
     ["kirilma10 + adx30 + kapanis stop", variant({
@@ -239,74 +249,59 @@ const combosFor = (presetId) => ({
 }[presetId] ?? []);
 const COMBOS = combosFor(base.presetId);
 
-const positives = (result, period) =>
-  symbols.filter((s) => { const x = stat(result.perSymbol.get(s)[period]); return x && x.trades >= 15 && x.expectancy > 0; }).length;
-const usable = (result, period) =>
-  symbols.filter((s) => (stat(result.perSymbol.get(s)[period])?.trades ?? 0) >= 15).length;
+const reporter = createReporter({ symbols, periods: PERIODS });
+const { holdoutKey } = reporter;
 
-const report = (label, result, referenceLast) => {
-  const last = PERIODS.at(-1);
-  const row = PERIODS.map((p) => cell(stat(result.totals[p]))).join(" | ");
-  const holdout = PERIODS.includes("holdout") ? "holdout" : last;
-  const mark = referenceLast === undefined ? "  <<< REFERANS"
-    : (stat(result.totals[holdout])?.expectancy ?? -99) > referenceLast ? "  ^" : "";
-  console.log(`  ${label.padEnd(22)} ${row} | ${positives(result, holdout)}/${usable(result, holdout)}${mark}`);
+const report = (label, result) => {
+  reporter.block(label, result);
   return result;
 };
+
+// A variant counts as an improvement only where the user's own criterion is met: on that one
+// symbol, its hit rate and its trade count both hold up. Averaging the four symbols would let a
+// single strong symbol carry three weak ones, which is the failure this whole file guards.
+const gainedSymbols = (result, reference) =>
+  reporter.compare(result, reference, holdoutKey).filter((c) => c.mark === "^").map((c) => c.symbol);
 
 console.log(`${base.name} · ${base.chartTimeframe} dakika · kirilma ${base.trend.breakoutLength} · EMA ${base.trend.emaFast}/${base.trend.emaSlow} · ADX ${base.momentum.adxThreshold} · ATR×${base.risk.atrMultiple} · rr ${base.risk.riskReward}`);
 console.log(`Layout: ${LAYOUT} — ${PERIODS.join(" | ")}`);
 console.log("Tek degiskenli: her satirda preset'in kendi ayarlarindan SADECE biri degisiyor.");
-console.log("Son kolon: holdout'ta artida olan sembol / anlamli sembol (>=15 islem). ^ = referanstan iyi.\n");
+console.log("Her satir tek bir sembol. Sembolleri toplayan bir sayi bu ciktida yok.\n");
+reporter.head();
 
 const referenceResult = measure(base);
 report("referans (urun)", referenceResult);
-const holdoutKey = PERIODS.includes("holdout") ? "holdout" : PERIODS.at(-1);
-const referenceHoldout = stat(referenceResult.totals[holdoutKey])?.expectancy ?? 0;
 
+const all = [];
 const better = [];
 for (const [axis, variants] of AXES) {
   if (!variants.length) continue;
   console.log(`\n${axis}:`);
   for (const [label, config] of variants) {
-    const result = report(label, measure(config), referenceHoldout);
-    const beats = PERIODS.filter((p) => {
-      const a = stat(result.totals[p])?.expectancy;
-      const b = stat(referenceResult.totals[p])?.expectancy;
-      return a !== undefined && b !== undefined && a > b;
-    });
-    if (beats.length >= PERIODS.length - 1) better.push([label, beats]);
+    const result = report(label, measure(config));
+    all.push([label, result]);
+    const gained = gainedSymbols(result, referenceResult);
+    if (gained.length >= 2) better.push([label, gained]);
   }
 }
 
 console.log("\nkombinasyonlar (tek degiskenli degil — acikca olculen bilesikler):");
-const comboResults = [];
 for (const [label, config] of COMBOS) {
-  const result = report(label, measure(config), referenceHoldout);
-  comboResults.push([label, result]);
-  const beats = PERIODS.filter((p) => {
-    const a = stat(result.totals[p])?.expectancy;
-    const b = stat(referenceResult.totals[p])?.expectancy;
-    return a !== undefined && b !== undefined && a > b;
-  });
-  if (beats.length >= PERIODS.length - 1) better.push([label, beats]);
+  const result = report(label, measure(config));
+  all.push([label, result]);
+  const gained = gainedSymbols(result, referenceResult);
+  if (gained.length >= 2) better.push([label, gained]);
 }
 
-console.log(`\n=== ${PERIODS.length - 1} donem veya fazlasinda referansi geceler ===`);
+reporter.summary(all, referenceResult);
+
+console.log("\n=== en az iki sembolde hem isabet hem islem sayisi referanstan iyi ===");
 if (!better.length) console.log("  yok");
-for (const [label, beats] of better) console.log(`  ${label.padEnd(22)} ${beats.join(", ")}`);
+for (const [label, gained] of better) console.log(`  ${label.padEnd(24)} ${gained.join(", ")}`);
 
-console.log("\nSembol sembol detay, referans ve one cikanlar (holdout):");
-const detail = (label, result) => {
-  console.log(`  ${label.padEnd(22)} ` + symbols.map((s) => {
-    const x = stat(result.perSymbol.get(s)[holdoutKey]);
-    return `${s.slice(0, 3)} ${x ? (x.expectancy >= 0 ? "+" : "") + x.expectancy.toFixed(3) + `(${x.trades}t)` : "—"}`;
-  }).join("  "));
-};
-detail("referans", referenceResult);
-for (const [axis, variants] of AXES) {
-  for (const [label, config] of variants) {
-    if (better.some(([l]) => l === label)) detail(label, measure(config));
-  }
+console.log("\n=== okunabilir ornekleme sahip sembol sayisi (holdout, >=15 islem) ===");
+for (const [label, result] of [["referans", referenceResult], ...all]) {
+  const read = reporter.readable(result);
+  const won = reporter.sound(result);
+  console.log(`  ${label.padEnd(24)} okunabilir ${read.length}/${symbols.length}  artida ${won.length}  ${won.map((s) => s.replace(/USDT?$/, "")).join(" ")}`);
 }
-for (const [label, result] of comboResults) detail(label, result);

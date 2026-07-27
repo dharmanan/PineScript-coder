@@ -104,30 +104,28 @@ for (const preset of measurable) {
 rows.sort((left, right) => (right.metrics.expectancy_r ?? -Infinity) - (left.metrics.expectancy_r ?? -Infinity));
 
 const pct = (value) => (value === null ? "  n/a" : `${(100 * value).toFixed(1)}%`);
-console.log("preset                       tf  mode        rr   trades   win     expectancy      net");
-console.log("-".repeat(88));
+
+// Rule 1 of the review plan: symbols are never pooled. This file used to lead with one row per
+// preset over all four symbols and close with an ALL PRESETS row over every preset as well, so
+// the two most prominent numbers on the page were the two that hide a single symbol carrying
+// the result. Every row below is one preset on one symbol.
+console.log("preset                       tf  mode        rr   symbol   trades   win     expectancy      net");
+console.log("-".repeat(100));
 for (const row of rows) {
-  const m = row.metrics;
   const mode = row.preset.signalMode === "score" ? `score-${row.preset.scoreThreshold}` : "all";
-  console.log(
-    `${row.preset.presetId.padEnd(27)} ${row.preset.chartTimeframe.padStart(3)} ${mode.padEnd(11)} ` +
-    `${String(row.preset.risk.riskReward).padStart(3)} ${String(m.trades).padStart(7)}  ${pct(m.win_rate)}  ` +
-    `${(m.expectancy_r ?? 0).toFixed(4).padStart(9)}R ${(m.net_r).toFixed(1).padStart(9)}R`
-  );
+  for (const symbol of symbols) {
+    const m = row.perSymbol[symbol];
+    console.log(
+      `${row.preset.presetId.padEnd(27)} ${row.preset.chartTimeframe.padStart(3)} ${mode.padEnd(11)} ` +
+      `${String(row.preset.risk.riskReward).padStart(3)} ${symbol.replace("USDT", "").padStart(6)} ` +
+      `${String(m.trades).padStart(7)}  ${pct(m.win_rate)}  ` +
+      `${(m.expectancy_r ?? 0).toFixed(4).padStart(9)}R ${(m.net_r).toFixed(1).padStart(9)}R`
+    );
+  }
 }
 
-const totals = rows.reduce(
-  (sum, row) => ({ trades: sum.trades + row.metrics.trades, wins: sum.wins + row.metrics.wins, net: sum.net + row.metrics.net_r }),
-  { trades: 0, wins: 0, net: 0 }
-);
-console.log("-".repeat(88));
-console.log(
-  `${"ALL PRESETS".padEnd(27)}                     ${String(totals.trades).padStart(7)}  ` +
-  `${pct(totals.trades ? totals.wins / totals.trades : null)}  ${(totals.net / totals.trades).toFixed(4).padStart(9)}R ${totals.net.toFixed(1).padStart(9)}R`
-);
-
-console.log("\nPer symbol, positive presets only:");
-for (const row of rows.filter((item) => item.metrics.expectancy_r > 0)) {
+console.log("\nPer symbol, presets positive on every readable symbol:");
+for (const row of rows.filter((item) => symbols.every((symbol) => (item.perSymbol[symbol].expectancy_r ?? 0) > 0))) {
   const parts = symbols.map((symbol) => {
     const m = row.perSymbol[symbol];
     return `${symbol.replace("USDT", "")} ${String(m.trades).padStart(4)}t ${pct(m.win_rate)} ${m.expectancy_r === null ? " n/a" : m.expectancy_r.toFixed(3)}R`;

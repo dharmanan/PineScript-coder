@@ -16,6 +16,7 @@ import { buildBehaviorPlan, presets } from "./generated/preset-config.mjs";
 import { TIMEFRAMES, aggregate, intervalMs, splitContiguous } from "./data.mjs";
 import { loadAll, partitionOf, partitionsFor } from "./dataset.mjs";
 import { buildSeries, buildSignals, simulate } from "./engine.mjs";
+import { createReporter } from "./report.mjs";
 
 const arg = (name, fallback) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;
 const target = arg("preset");
@@ -92,18 +93,9 @@ const measure = (config) => {
       }
     }
   }
-  return {
-    perSymbol,
-    totals: Object.fromEntries(PERIODS.map((p) => [p, symbols.flatMap((s) => perSymbol.get(s)[p])]))
-  };
+  return { perSymbol };
 };
 
-const stat = (values) => {
-  if (!values.length) return null;
-  const wins = values.filter((v) => v > 0).length;
-  return { trades: values.length, winRate: wins / values.length, expectancy: values.reduce((a, b) => a + b, 0) / values.length };
-};
-const cell = (s) => (s ? `${String(s.trades).padStart(5)}t %${(s.winRate * 100).toFixed(1).padStart(5)} ${(s.expectancy >= 0 ? "+" : "") + s.expectancy.toFixed(3)}R` : "        —         ");
 
 // Only the fields a profile is allowed to move, applied the way the compiler applies them.
 // Every exit field falls back to the profile's own value, so calling this with no overrides
@@ -135,14 +127,14 @@ const EXITS = [
 ];
 const REWARDS = [1.25, 1.5, 2, 2.5, 3, 4];
 
-const holdoutKey = PERIODS.includes("holdout") ? "holdout" : PERIODS.at(-1);
-const positives = (result, period) =>
-  symbols.filter((s) => { const x = stat(result.perSymbol.get(s)[period]); return x && x.trades >= 15 && x.expectancy > 0; }).length;
-const usable = (result, period) =>
-  symbols.filter((s) => (stat(result.perSymbol.get(s)[period])?.trades ?? 0) >= 15).length;
+const reporter = createReporter({ symbols, periods: PERIODS, labelWidth: 26 });
+const { holdoutKey } = reporter;
 
-const line = (label, result) =>
-  `  ${label.padEnd(26)} ${PERIODS.map((p) => cell(stat(result.totals[p]))).join(" | ")} | ${positives(result, holdoutKey)}/${usable(result, holdoutKey)}`;
+// The hit-rate profile is chosen on the two numbers the user reads on each symbol separately:
+// how often it is right, and how many trades that is measured over. A pooled hit rate hides the
+// case that decides whether the profile ships — one symbol at 60% carrying three at 35%.
+const gainedSymbols = (result, reference) =>
+  reporter.compare(result, reference, holdoutKey).filter((c) => c.mark === "^").map((c) => c.symbol);
 
 console.log(`${base.name} — ISABET PROFILI, mevcut yapiya karsi yeniden olculuyor`);
 console.log(`Yapi${structureName ? ` (${structureName}, ÜRÜNDE DEGIL)` : " (urun)"}: ${base.chartTimeframe}dk · ATR×${base.risk.atrMultiple} · stop ${base.risk.stopTrigger}` +
@@ -150,11 +142,14 @@ console.log(`Yapi${structureName ? ` (${structureName}, ÜRÜNDE DEGIL)` : " (ur
 console.log(`Mevcut isabet profili: rr ${profile.riskReward}, trail ${profile.trailStartR || "yok"}/${profile.trailDistanceR}, pencere ${profile.triggerWindow}`);
 console.log(`Pencere bu taramada: ${arg("window", profile.triggerWindow)} — Layout: ${PERIODS.join(" | ")}\n`);
 
+console.log("Her satir tek bir sembol. Sembolleri toplayan bir sayi bu ciktida yok.\n");
+reporter.head();
+
 const reference = measure(asProfile());
 console.log("MEVCUT:");
-console.log(line(`rr ${profile.riskReward} + trail ${profile.trailStartR || "yok"}`, reference));
+reporter.block(`rr ${profile.riskReward} + trail ${profile.trailStartR || "yok"}`, reference);
 
-const refByPeriod = Object.fromEntries(PERIODS.map((p) => [p, stat(reference.totals[p])?.expectancy ?? null]));
+const all = [];
 const winners = [];
 
 // A follow-up question is usually about one exit family, and measuring the other five to
@@ -164,38 +159,41 @@ for (const [exitLabel, exitPatch] of EXITS) {
   if (exitFilter && exitLabel !== exitFilter) continue;
   console.log(`\n${exitLabel}:`);
   for (const rr of REWARDS) {
+    const label = `rr ${rr} + ${exitLabel}`;
     const result = measure(asProfile({ riskReward: rr, ...exitPatch }));
-    const beats = PERIODS.filter((p) => {
-      const a = stat(result.totals[p])?.expectancy;
-      return a !== undefined && refByPeriod[p] !== null && a > refByPeriod[p];
-    });
-    const mark = beats.length === PERIODS.length ? "  <<< DORT DONEM" : beats.length === PERIODS.length - 1 ? "  ^^" : "";
-    console.log(line(`rr ${rr}`, result) + mark);
-    if (beats.length >= PERIODS.length - 1) winners.push({ label: `rr ${rr} + ${exitLabel}`, beats, result, config: { riskReward: rr, ...exitPatch } });
+    reporter.block(`rr ${rr}`, result);
+    all.push([label, result]);
+    const gained = gainedSymbols(result, reference);
+    if (gained.length >= 2) winners.push({ label, gained, result, config: { riskReward: rr, ...exitPatch } });
   }
 }
 
-console.log(`\n=== ${PERIODS.length - 1} donem veya fazlasinda mevcut profili geceler ===`);
+reporter.summary(all, reference);
+
+console.log("\n=== en az iki sembolde hem isabet hem islem sayisi mevcut profilden iyi ===");
 if (!winners.length) console.log("  yok — mevcut isabet profili yeni yapida da en iyisi");
-for (const w of winners) console.log(`  ${w.label.padEnd(30)} ${w.beats.join(", ")}`);
+for (const w of winners) console.log(`  ${w.label.padEnd(30)} ${w.gained.join(", ")}`);
+
+console.log("\n=== okunabilir ornekleme sahip sembol sayisi (holdout, >=15 islem) ===");
+for (const [label, result] of [["mevcut", reference], ...all]) {
+  const read = reporter.readable(result);
+  const won = reporter.sound(result);
+  console.log(`  ${label.padEnd(30)} okunabilir ${read.length}/${symbols.length}  artida ${won.length}  ${won.map((s) => s.replace(/USDT?$/, "")).join(" ")}`);
+}
 
 // Trigger window last, and only on what survived: sweeping it against every reward and exit
 // would be a four-hundred-cell table nobody can read, and the window is the axis least likely
 // to interact with how a trade is closed.
 if (winners.length) {
   console.log("\ntetikleyici penceresi, ayakta kalanlar uzerinde:");
+  const windowRows = [];
   for (const w of winners.slice(0, 4)) {
     console.log(`\n  ${w.label}`);
     for (const win of [1, 3, 5, 10]) {
-      console.log(line(`   pencere ${win}`, measure(asProfile({ ...w.config, triggerWindow: win }))));
+      const result = measure(asProfile({ ...w.config, triggerWindow: win }));
+      reporter.block(`pencere ${win}`, result);
+      windowRows.push([`${w.label} · pencere ${win}`, result]);
     }
   }
-
-  console.log("\nsembol sembol, holdout:");
-  const detail = (label, result) => console.log(`  ${label.padEnd(30)} ` + symbols.map((s) => {
-    const x = stat(result.perSymbol.get(s)[holdoutKey]);
-    return `${s.slice(0, 3)} ${x ? (x.expectancy >= 0 ? "+" : "") + x.expectancy.toFixed(3) + `(${x.trades}t)` : "—"}`;
-  }).join("  "));
-  detail("mevcut", reference);
-  for (const w of winners.slice(0, 6)) detail(w.label, w.result);
+  reporter.summary(windowRows, reference);
 }

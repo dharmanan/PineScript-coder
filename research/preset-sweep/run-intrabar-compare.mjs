@@ -41,7 +41,11 @@ for (const preset of measurable) {
 
   const plain = [];
   const intra = [];
+  const bySymbolTrades = new Map();
   for (const symbol of symbols) {
+    const symbolPlain = [];
+    const symbolIntra = [];
+    bySymbolTrades.set(symbol, { plain: symbolPlain, intra: symbolIntra });
     const { candles, groups } = aggregateWithGroups(bySymbol.get(symbol), timeframe.factor);
     const bounds = splitContiguous(candles, intervalMs(timeframe));
     let offset = 0;
@@ -50,8 +54,12 @@ for (const preset of measurable) {
       offset += segment.length;
       if (segment.length < MIN_SEGMENT) continue;
       const signals = buildSignals(preset, plan, segment, options);
-      plain.push(...simulate(preset, segment, signals, exits));
-      intra.push(...simulate(preset, segment, signals, { ...exits, intrabar: segmentGroups }));
+      const plainTrades = simulate(preset, segment, signals, exits);
+      const intraTrades = simulate(preset, segment, signals, { ...exits, intrabar: segmentGroups });
+      plain.push(...plainTrades);
+      intra.push(...intraTrades);
+      symbolPlain.push(...plainTrades);
+      symbolIntra.push(...intraTrades);
     }
   }
 
@@ -67,18 +75,24 @@ for (const preset of measurable) {
   totals.ambiguous += ambiguousBefore;
   totals.resolved += ambiguousBefore - ambiguousAfter;
 
-  console.log(
-    `${preset.presetId.padEnd(27)} ${String(a.trades).padStart(6)}  ${String(ambiguousBefore).padStart(5)}->${String(ambiguousAfter).padEnd(4)} ` +
-    `${(a.expectancy_r ?? 0).toFixed(4).padStart(9)}R  ${(b.expectancy_r ?? 0).toFixed(4).padStart(9)}R  ` +
-    `${(((b.expectancy_r ?? 0) - (a.expectancy_r ?? 0))).toFixed(4).padStart(9)}R`
-  );
+  // Rule 1 of the review plan: symbols are never pooled. This file used to print one row per
+  // preset over all four symbols and close with an ALL row over every preset as well, so the two
+  // most prominent numbers on the page were the two that cannot show intrabar resolution helping
+  // one symbol while it hurts another. One line per symbol, and no total.
+  for (const symbol of symbols) {
+    const trades = bySymbolTrades.get(symbol);
+    const before = summarize(evaluated(trades.plain));
+    const after = summarize(evaluated(trades.intra));
+    const ambBefore = evaluated(trades.plain).filter((trade) => trade.reason === "ambiguous").length;
+    const ambAfter = evaluated(trades.intra).filter((trade) => trade.reason === "ambiguous").length;
+    console.log(
+      `${preset.presetId.padEnd(27)} ${symbol.replace("USDT", "").padStart(5)} ${String(before.trades).padStart(6)}  ` +
+      `${String(ambBefore).padStart(5)}->${String(ambAfter).padEnd(4)} ` +
+      `${(before.expectancy_r ?? 0).toFixed(4).padStart(9)}R  ${(after.expectancy_r ?? 0).toFixed(4).padStart(9)}R  ` +
+      `${(((after.expectancy_r ?? 0) - (before.expectancy_r ?? 0))).toFixed(4).padStart(9)}R`
+    );
+  }
 }
 
 console.log("-".repeat(94));
-console.log(
-  `${"ALL".padEnd(27)} ${String(totals.trades).padStart(6)}  ${String(totals.ambiguous).padStart(5)}->${String(totals.ambiguous - totals.resolved).padEnd(4)} ` +
-  `${(totals.plain / totals.trades).toFixed(4).padStart(9)}R  ${(totals.intra / totals.trades).toFixed(4).padStart(9)}R  ` +
-  `${((totals.intra - totals.plain) / totals.trades).toFixed(4).padStart(9)}R`
-);
-console.log(`\nNet across all presets: ${totals.plain.toFixed(1)}R chart-only -> ${totals.intra.toFixed(1)}R with intrabar (${(totals.intra - totals.plain >= 0 ? "+" : "")}${(totals.intra - totals.plain).toFixed(1)}R)`);
 console.log(`${totals.resolved} of ${totals.ambiguous} both-touched candles were settled by their five-minute candles.`);

@@ -20,7 +20,6 @@ const run = (preset) => {
   const timeframe = TIMEFRAMES.find((item) => item.id === preset.chartTimeframe);
   if (!timeframe) return null;
   const plan = buildBehaviorPlan(preset);
-  const totals = { development: [], validation: [], holdout: [] };
   const perSymbol = new Map(symbols.map((symbol) => [symbol, { development: [], validation: [], holdout: [] }]));
 
   for (const symbol of symbols) {
@@ -41,12 +40,11 @@ const run = (preset) => {
       for (const trade of trades) {
         const partition = partitionOf(trade.entryTimestamp);
         if (!partition) continue;
-        totals[partition].push(trade.netR);
         perSymbol.get(symbol)[partition].push(trade.netR);
       }
     }
   }
-  return { totals, perSymbol };
+  return { perSymbol };
 };
 
 const stat = (values) => {
@@ -67,16 +65,21 @@ for (const preset of measurable) {
   const base = run(preset);
   if (!base) continue;
   console.log(`\n${preset.presetId}  (${preset.chartTimeframe}dk, atr ${preset.risk.atrMultiple}, adx ${preset.momentum.adxEnabled ? preset.momentum.adxThreshold : "kapali"}, hacim ${preset.volume.enabled ? preset.volume.multiplier : "kapali"})`);
-  console.log(`   SIMDIKI    dev ${show(stat(base.totals.development))} | val ${show(stat(base.totals.validation))} | hld ${show(stat(base.totals.holdout))}`);
+  // Rule 1: one line per symbol. A dev/val/holdout line pooled over four symbols was the
+  // headline here, and it is exactly the number that hides one symbol carrying the rest.
+  const bySym = (label, result) => {
+    console.log(`   ${label}`);
+    for (const symbol of symbols) {
+      const r = result.perSymbol.get(symbol);
+      console.log(`     ${symbol.replace(/USDT?$/, "").padEnd(6)} dev ${show(stat(r.development))} | val ${show(stat(r.validation))} | hld ${show(stat(r.holdout))}`);
+    }
+  };
+  bySym("SIMDIKI", base);
 
   for (const change of CHANGES) {
     if (change.skip(preset)) { console.log(`   ${change.id.padEnd(10)} zaten bu degerde veya kapali`); continue; }
     const changed = run(change.apply(preset));
-    const baseHold = stat(base.totals.holdout);
-    const newHold = stat(changed.totals.holdout);
-    const delta = baseHold && newHold ? newHold.expectancy - baseHold.expectancy : null;
-    console.log(`   ${change.id.padEnd(10)} dev ${show(stat(changed.totals.development))} | val ${show(stat(changed.totals.validation))} | hld ${show(newHold)}` +
-      `  ${delta === null ? "" : (delta >= 0 ? "IYILESTI +" : "KOTULESTI ") + delta.toFixed(3) + "R"}`);
+    bySym(change.id, changed);
     // Per symbol, because a change that only helps one symbol has not helped.
     const better = symbols.filter((symbol) => {
       const b = stat(base.perSymbol.get(symbol).holdout);

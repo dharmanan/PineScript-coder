@@ -19,7 +19,6 @@ const timeframe = TIMEFRAMES.find((item) => item.id === base.chartTimeframe);
 
 const measure = (config) => {
   const plan = buildBehaviorPlan(config);
-  const totals = { holdout: [], july: [] };
   const per = new Map(symbols.map((symbol) => [symbol, { holdout: [], july: [] }]));
   for (const symbol of symbols) {
     const segments = splitContiguous(aggregate(bySymbol.get(symbol), timeframe.factor), intervalMs(timeframe))
@@ -38,12 +37,11 @@ const measure = (config) => {
       })) {
         const period = partitionOf(trade.entryTimestamp, PARTITIONS);
         if (period !== "holdout" && period !== "july") continue;
-        totals[period].push(trade.netR);
         per.get(symbol)[period].push(trade.netR);
       }
     }
   }
-  return { totals, per };
+  return { per };
 };
 
 const stat = (values) => {
@@ -83,6 +81,10 @@ for (const candidate of candidates) {
   const holdPos = symbols.filter((s) => { const x = stat(result.per.get(s).holdout); return x && x.trades >= 15 && x.expectancy > 0; });
   const holdUsable = symbols.filter((s) => (stat(result.per.get(s).holdout)?.trades ?? 0) >= 15);
   console.log(`${candidate.id}`);
-  console.log(`   2026 Oca-Haz ${cell(stat(result.totals.holdout))}  |  TEMMUZ ${cell(stat(result.totals.july))}  |  holdout ${holdPos.length}/${holdUsable.length} sembol artida`);
-  console.log(`   ${symbols.map((s) => { const x = stat(result.per.get(s).holdout); return `${s.slice(0,3)} ${x ? (x.expectancy>=0?"+":"")+x.expectancy.toFixed(3) : "—"}`; }).join("  ")}`);
+  // Rule 1: no pooled line. Each symbol carries its own holdout and July.
+  for (const symbol of symbols) {
+    const r = result.per.get(symbol);
+    console.log(`   ${symbol.replace(/USDT?$/, "").padEnd(5)} 2026 Oca-Haz ${cell(stat(r.holdout))}  |  TEMMUZ ${cell(stat(r.july))}`);
+  }
+  console.log(`   holdout ${holdPos.length}/${holdUsable.length} sembol okunabilir ornekle artida`);
 }

@@ -331,19 +331,56 @@ export const presets: StrategyConfig[] = [
     risk: { ...defaultConfig.risk, riskReward: 6 },
     winRateProfile: winRate({ riskReward: 3.5, trailStartR: 2, trailDistanceR: 1.5 })
   }),
-  // Strongest of the set. holdout 2026: 55 trades, 45.5% win, +0.521R per trade.
-  // A documented alternative trades reward for hit rate: rr 2.5 with trail 1.5/1.0 gave
-  // 52.7% win and +0.303R on the same holdout.
-  // Win-rate profile, holdout 2026: 55 trades, 49.1% win, +0.075R. The highest hit rate in
-  // the set — 57.6% in development, 48.8% in validation, positive on all four symbols out
-  // of sample. Also the smallest sample: 9 to 16 trades per symbol in the holdout.
+  // LOCKED on its own structure, 2026-07-27. The previous settings were never measured: the
+  // volume gate, the ADX gate and the long moving average had been hand-picked since the first
+  // version, and the sweep that produced this preset only ever moved the reward target.
+  //
+  // What the review found first was that the old numbers were being read wrong. A pooled figure
+  // across the four symbols said this preset made +0.269R on the 2026 holdout. Per symbol it was
+  // BTC -0.572R on 15 trades and BNB +0.158R on 9 — one symbol carrying a preset that was not
+  // usable on the other three. Every measurement tool in research/preset-sweep now refuses to
+  // print a pooled row for exactly this reason.
+  //
+  // Three settings moved, each measured on its own before they were measured together:
+  //   volume 1.2 -> 0.8   the only isolated axis in the whole sweep that raised both the hit
+  //                       rate and the trade count on all four symbols at once
+  //   ADX off             the axis that opens the sample. It is the only other row leaving all
+  //                       four symbols readable, and unlike a 30-minute chart it does not cost
+  //                       ETH twenty-four points of hit rate to get there
+  //   long MA off         measurably dead: its off row was identical to the reference on every
+  //                       symbol and every period, so it was a control that decided nothing
+  //
+  // Read on all four symbols in TradingView on the win-rate profile, 2026-01-01 to 2026-07-27,
+  // against the settings this preset used to ship, same profile and same window:
+  //            shipping                     locked
+  //   ETH      19t  52.6%   +1.30R          40t  55.0%   +9.81R
+  //   BTC      18t  38.9%   -4.38R          42t  50.0%   +7.09R
+  //   BNB      12t  50.0%   -0.01R          36t  55.6%  +14.42R
+  //   SOL      18t  44.4%   +1.56R          38t  44.7%   +3.86R
+  // The trade count roughly doubles on every symbol, the hit rate rises on every symbol, and
+  // BTC turns from a loss into a profit while BNB goes from flat to the best of the four. The
+  // panel matched the measurement exactly on ETH, BNB and SOL; on BTC the engine counted one
+  // extra losing trade out of 42.
+  //
+  // Also measured and rejected, so the ground is not covered twice: ADX 25 and 30 (better in
+  // development, negative out of sample, and BNB drops to 2 trades), a 30-minute chart (opens
+  // the sample but costs ETH 24 points of hit rate), a 4-hour chart, higher-timeframe length 50,
+  // 200 and daily, RSI 60/40, EMA 9/21 and 50/100, wick stop confirmation, volume 1.25 through
+  // 2.0, and ATR 2.5 and 3.0.
+  //
+  // The old `sensitivity: "selective"` is gone. That field is a UI macro meaning cooldown 10,
+  // volume 1.25 and ADX 25 — a state this preset was already not in, and now cannot be in, since
+  // it has no ADX gate at all. Leaving it would put "More selective" on a form describing
+  // settings that are the opposite.
   preset({
-    presetId: "selective_multi_timeframe", name: "Selective Multi-Timeframe", sensitivity: "selective",
+    presetId: "selective_multi_timeframe", name: "Selective Multi-Timeframe",
     chartTimeframe: "60", triggerWindow: 3, entryTrigger: "pullback_reclaim",
     higherTimeframe: { ...defaultConfig.higherTimeframe, enabled: true, timeframe: "240", blockCounterTrend: true, closedBarOnly: true },
-    momentum: { ...defaultConfig.momentum, macdEnabled: true, adxEnabled: true },
-    volume: { ...defaultConfig.volume, multiplier: 1.2 },
+    trend: { ...defaultConfig.trend, longMaEnabled: false },
+    momentum: { ...defaultConfig.momentum, macdEnabled: true, adxEnabled: false },
+    volume: { ...defaultConfig.volume, multiplier: 0.8 },
     risk: { ...defaultConfig.risk, stopTrigger: "close", riskReward: 6, trailStartR: 2, trailDistanceR: 1.5 },
+    tradesPerMonth: 5.5,
     winRateProfile: winRate({ triggerWindow: 3, riskReward: 2.5 })
   }),
   // Long-only. Not carried forward from the v2 sweep: its best configuration matched

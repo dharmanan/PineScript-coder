@@ -20,6 +20,7 @@ import { buildBehaviorPlan, presets } from "./generated/preset-config.mjs";
 import { TIMEFRAMES, aggregate, intervalMs, splitContiguous } from "./data.mjs";
 import { loadAll, partitionOf, partitionsFor } from "./dataset.mjs";
 import { buildSeries, buildSignals, simulate } from "./engine.mjs";
+import { createReporter } from "./report.mjs";
 
 const arg = (name, fallback) => process.argv.find((item) => item.startsWith(`--${name}=`))?.split("=")[1] ?? fallback;
 const target = arg("preset");
@@ -100,52 +101,31 @@ const measure = (entryOptions) => {
       }
     }
   }
-  return {
-    perSymbol,
-    filled,
-    totals: Object.fromEntries(PERIODS.map((p) => [p, symbols.flatMap((s) => perSymbol.get(s)[p])]))
-  };
+  return { perSymbol, filled };
 };
 
-const stat = (values) => {
-  if (!values.length) return null;
-  const wins = values.filter((value) => value > 0).length;
-  return { trades: values.length, winRate: wins / values.length, expectancy: values.reduce((a, b) => a + b, 0) / values.length };
-};
-const cell = (s) => (s ? `${String(s.trades).padStart(5)}t %${(s.winRate * 100).toFixed(1).padStart(5)} ${(s.expectancy >= 0 ? "+" : "") + s.expectancy.toFixed(3)}R` : "        —         ");
-const holdoutKey = PERIODS.includes("holdout") ? "holdout" : PERIODS.at(-1);
-const positives = (result) =>
-  symbols.filter((s) => { const x = stat(result.perSymbol.get(s)[holdoutKey]); return x && x.trades >= 15 && x.expectancy > 0; }).length;
+const reporter = createReporter({ symbols, periods: PERIODS, labelWidth: 21 });
+const { holdoutKey } = reporter;
 
 console.log(`${shipped.name} — GIRIS TIPI: market vs limit`);
 console.log(`${config.chartTimeframe}dk | profil: ${profileName} | rr ${config.risk.riskReward} | tetikleyici: ${plan.entry.trigger.id}`);
 console.log(`Toplam sinyal: ${signalCount} (giris tipinden bagimsiz)\n`);
-console.log(`  ${"".padEnd(21)} ${PERIODS.map((p) => p.padEnd(18)).join(" | ")} | dolum | artida`);
+console.log("Her satir tek bir sembol. Sembolleri toplayan bir sayi bu ciktida yok.\n");
+reporter.head();
 
 const results = [];
 for (const [label, entryOptions] of VARIANTS) {
   const result = measure(entryOptions);
   results.push([label, result]);
-  const rate = `%${((100 * result.filled) / signalCount).toFixed(0)}`.padStart(5);
-  console.log(`  ${label.padEnd(21)} ${PERIODS.map((p) => cell(stat(result.totals[p]))).join(" | ")} | ${rate} | ${positives(result)}/4`);
+  reporter.block(`${label}  (dolum %${((100 * result.filled) / signalCount).toFixed(0)})`, result);
 }
 
-const base = results[0][1];
-const beats = (result) => PERIODS.filter((p) => {
-  const a = stat(result.totals[p])?.expectancy;
-  const b = stat(base.totals[p])?.expectancy;
-  return a !== undefined && b !== undefined && a > b;
-});
-console.log("\nmarket'i kac donemde geciyor:");
-for (const [label, result] of results.slice(1)) {
-  const won = beats(result);
-  console.log(`  ${label.padEnd(21)} ${won.length}/${PERIODS.length}${won.length ? "  (" + won.join(", ") + ")" : ""}`);
-}
+const [, marketResult] = results[0];
+reporter.summary(results.slice(1), marketResult);
 
-console.log(`\nsembol sembol, ${holdoutKey}:`);
+console.log("\n=== okunabilir ornekleme sahip sembol sayisi (holdout, >=15 islem) ===");
 for (const [label, result] of results) {
-  console.log(`  ${label.padEnd(21)} ` + symbols.map((s) => {
-    const x = stat(result.perSymbol.get(s)[holdoutKey]);
-    return `${s.slice(0, 3)} ${x ? (x.expectancy >= 0 ? "+" : "") + x.expectancy.toFixed(3) + `(${x.trades}t)` : "—"}`;
-  }).join("  "));
+  const read = reporter.readable(result);
+  const won = reporter.sound(result);
+  console.log(`  ${label.padEnd(21)} okunabilir ${read.length}/${symbols.length}  artida ${won.length}  ${won.map((s) => s.replace(/USDT?$/, "")).join(" ")}`);
 }

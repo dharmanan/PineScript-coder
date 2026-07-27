@@ -47,7 +47,6 @@ const measure = (preset) => {
   const timeframe = TIMEFRAMES.find((item) => item.id === preset.chartTimeframe);
   if (!timeframe) return null;
   const plan = buildBehaviorPlan(preset);
-  const totals = Object.fromEntries(PERIODS.map((period) => [period, []]));
   const perSymbol = new Map(symbols.map((symbol) => [symbol, Object.fromEntries(PERIODS.map((period) => [period, []]))]));
 
   for (const symbol of symbols) {
@@ -67,12 +66,11 @@ const measure = (preset) => {
       })) {
         const period = partitionOf(trade.entryTimestamp, PARTITIONS);
         if (!period) continue;
-        totals[period].push(trade.netR);
         perSymbol.get(symbol)[period].push(trade.netR);
       }
     }
   }
-  return { totals, perSymbol };
+  return { perSymbol };
 };
 
 const stat = (values) => {
@@ -106,26 +104,17 @@ for (const preset of measurable) {
     lines.push(`**İsabet profili:** risk/ödül ${winRateConfig.risk.riskReward}${winRateConfig.risk.trailStartR ? `, trailing ${winRateConfig.risk.trailStartR}/${winRateConfig.risk.trailDistanceR}` : ""}${winRateConfig.signalMode === "score" ? `, skor ${winRateConfig.scoreThreshold}` : ""}, pencere ${winRateConfig.triggerWindow}`);
   }
   lines.push("");
-  lines.push("| Dönem | Para profili | İsabet profili |");
-  lines.push("|---|---|---|");
-  for (const period of PERIODS) {
-    lines.push(`| ${LABELS[period]} | ${cell(stat(money.totals[period]))} | ${winRate ? cell(stat(winRate.totals[period])) : "—"} |`);
-  }
-  lines.push("");
-  lines.push("Sembol sembol, **2026 Ocak–Haziran** (para / isabet):");
-  lines.push("");
-  lines.push("| Sembol | Para profili | İsabet profili |");
-  lines.push("|---|---|---|");
-  for (const symbol of symbols) {
-    lines.push(`| ${symbol} | ${cell(stat(money.perSymbol.get(symbol).holdout))} | ${winRate ? cell(stat(winRate.perSymbol.get(symbol).holdout)) : "—"} |`);
-  }
-  lines.push("");
-  lines.push("Sembol sembol, **2026 Temmuz** (hiç görülmemiş veri):");
-  lines.push("");
-  lines.push("| Sembol | Para profili | İsabet profili |");
-  lines.push("|---|---|---|");
-  for (const symbol of symbols) {
-    lines.push(`| ${symbol} | ${cell(stat(money.perSymbol.get(symbol).july))} | ${winRate ? cell(stat(winRate.perSymbol.get(symbol).july)) : "—"} |`);
+  // Rule 1: no pooled row. One line per symbol, every period on it, for each profile in turn.
+  for (const [title, result] of [["Para profili", money], ["İsabet profili", winRate]]) {
+    if (!result) continue;
+    lines.push(`**${title}** — her sembol ayrı, sembolleri toplayan bir satır yok:`);
+    lines.push("");
+    lines.push(`| Sembol | ${PERIODS.map((period) => LABELS[period]).join(" | ")} |`);
+    lines.push(`|---|${PERIODS.map(() => "---").join("|")}|`);
+    for (const symbol of symbols) {
+      lines.push(`| ${symbol} | ${PERIODS.map((period) => cell(stat(result.perSymbol.get(symbol)[period]))).join(" | ")} |`);
+    }
+    lines.push("");
   }
   lines.push("");
 }

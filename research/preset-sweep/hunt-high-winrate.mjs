@@ -45,8 +45,7 @@ for (const chart of CHARTS) {
       risk: { ...base.risk, riskReward: reward, breakEvenAtR: 0, trailStartR: 0 }
     };
     const plan = buildBehaviorPlan(config);
-    const totals = { holdout: [], july: [] };
-    const per = new Map(symbols.map((symbol) => [symbol, []]));
+    const per = new Map(symbols.map((symbol) => [symbol, { holdout: [], july: [] }]));
 
     for (const symbol of symbols) {
       const segments = splitContiguous(aggregate(bySymbol.get(symbol), timeframe.factor), intervalMs(timeframe))
@@ -59,15 +58,20 @@ for (const chart of CHARTS) {
         for (const trade of simulate(config, segment, signals, { riskReward: reward, costPerSide: 0.01 })) {
           const period = partitionOf(trade.entryTimestamp, PARTITIONS);
           if (period !== "holdout" && period !== "july") continue;
-          totals[period].push(trade.netR);
-          if (period === "holdout") per.get(symbol).push(trade.netR);
+          per.get(symbol)[period].push(trade.netR);
         }
       }
     }
 
-    const positive = symbols.filter((s) => { const x = stat(per.get(s)); return x && x.trades >= 20 && x.expectancy > 0; });
-    const usable = symbols.filter((s) => (stat(per.get(s))?.trades ?? 0) >= 20);
-    console.log(`${chart.padStart(4)}dk  ${String(reward).padEnd(5)} ${cell(stat(totals.holdout))}  ${cell(stat(totals.july))}  ${positive.length}/${usable.length}`);
+    const positive = symbols.filter((s) => { const x = stat(per.get(s).holdout); return x && x.trades >= 20 && x.expectancy > 0; });
+    const usable = symbols.filter((s) => (stat(per.get(s).holdout)?.trades ?? 0) >= 20);
+    // Rule 1: one line per symbol. The pooled holdout/July pair that used to sit here read
+    // as a single verdict for a grid cell that four symbols can disagree about.
+    for (const symbol of symbols) {
+      const r = per.get(symbol);
+      console.log(`${chart.padStart(4)}dk  ${String(reward).padEnd(5)} ${symbol.replace(/USDT?$/, "").padEnd(5)} ${cell(stat(r.holdout))}  ${cell(stat(r.july))}`);
+    }
+    console.log(`      -> ${positive.length}/${usable.length} sembol okunabilir ornekle artida`);
   }
   console.log();
 }

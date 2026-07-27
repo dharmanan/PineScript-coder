@@ -100,31 +100,20 @@ for (const symbol of symbols) {
   }
 }
 
-const stat = (values) => {
-  if (!values.length) return null;
-  const wins = values.filter((value) => value > 0).length;
-  return { trades: values.length, winRate: wins / values.length, expectancy: values.reduce((a, b) => a + b, 0) / values.length };
-};
-const cell = (s) => (s ? `${String(s.trades).padStart(5)}t %${(s.winRate * 100).toFixed(1).padStart(5)} ${(s.expectancy >= 0 ? "+" : "") + s.expectancy.toFixed(3)}R` : "        —         ");
-const totals = (source, period) => stat(symbols.flatMap((symbol) => source.get(symbol)[period]));
+const reporter = createReporter({ symbols, periods: PERIODS, labelWidth: 16 });
 
 console.log(`${shipped.name} — GIRIS ANI: mum kapanisi vs mum ici`);
 console.log(`${config.chartTimeframe}dk grafik, mum ici ${timeframe.factor} adet 5dk mum | profil: ${profileName} | rr ${config.risk.riskReward}`);
 console.log(`Tetikleyici: ${plan.entry.trigger.id} | filtreler: ${plan.entry.filters.map((f) => f.id).join(", ")}\n`);
 
-console.log(`  ${"".padEnd(16)} ${PERIODS.map((p) => p.padEnd(18)).join(" | ")}`);
-console.log(`  ${"mum kapanisi".padEnd(16)} ${PERIODS.map((p) => cell(totals(chartClose, p))).join(" | ")}`);
-console.log(`  ${"mum ici".padEnd(16)} ${PERIODS.map((p) => cell(totals(intrabar, p))).join(" | ")}`);
+console.log("Her satir tek bir sembol. Sembolleri toplayan bir sayi bu ciktida yok.\n");
+reporter.head();
+const chartCloseResult = { perSymbol: chartClose };
+const intrabarResult = { perSymbol: intrabar };
+reporter.block("mum kapanisi", chartCloseResult);
+reporter.block("mum ici", intrabarResult);
+reporter.summary([["mum ici", intrabarResult]], chartCloseResult);
 
-console.log("\nsembol sembol:");
-for (const symbol of symbols) {
-  console.log(`  ${symbol}`);
-  console.log(`    ${"mum kapanisi".padEnd(14)} ${PERIODS.map((p) => cell(stat(chartClose.get(symbol)[p]))).join(" | ")}`);
-  console.log(`    ${"mum ici".padEnd(14)} ${PERIODS.map((p) => cell(stat(intrabar.get(symbol)[p]))).join(" | ")}`);
-}
-
-const better = slippage.filter((value) => value > 0).length;
-const average = slippage.reduce((left, right) => left + right, 0) / (slippage.length || 1);
 console.log(`\nGiris fiyati farki, ${slippage.length} sinyalde:`);
 console.log(`  mum ici girisin daha iyi oldugu oran: %${((100 * better) / (slippage.length || 1)).toFixed(1)}`);
 console.log(`  ortalama kazanc: ${average >= 0 ? "+" : ""}${average.toFixed(3)}R islem basina`);
