@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PineForge Studio",
-  description: "Deterministic Pine Script v6 strategy and indicator builder"
+  title: "Kohen Pine Studio",
+  description: "Kohen Pine Studio — deterministic Pine Script v6 indicator builder",
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png", sizes: "512x512" }],
+    apple: [{ url: "/icon.png", type: "image/png", sizes: "512x512" }]
+  }
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

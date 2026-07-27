@@ -137,8 +137,8 @@ describe("swing structure bias", () => {
     const text = explainConfig(structural).join(" ");
 
     it("says the bias comes from swing structure", () => {
-      expect(text).toContain("Direction comes from swing structure");
-      expect(text).toContain("higher highs with higher lows read bullish");
+      expect(text).toContain("It follows confirmed swing structure");
+      expect(text).toContain("Higher highs with higher lows read bullish");
     });
 
     it("states the confirmation delay that keeps it honest", () => {

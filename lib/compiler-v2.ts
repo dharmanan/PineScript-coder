@@ -22,7 +22,7 @@ export function compilePine(c: StrategyConfig): string {
 
   const lines: string[] = [
     "//@version=6",
-    "// Generated deterministically by PineForge Studio",
+    "// Generated deterministically by Kohen Pine Studio",
     "// Review and test this script in TradingView before using it with real capital.",
     declaration,
     "",
@@ -196,7 +196,7 @@ export function compilePine(c: StrategyConfig): string {
       lines.push(
         "var table dashboard = table.new(position.top_right, 2, 5, border_width=1)",
         "if barstate.islast",
-        "    table.cell(dashboard, 0, 0, \"PineForge\", bgcolor=color.new(color.blue, 70), text_color=color.white)",
+        "    table.cell(dashboard, 0, 0, \"Kohen Pine\", bgcolor=color.new(color.blue, 70), text_color=color.white)",
         "    table.cell(dashboard, 1, 0, \"SPOT\")",
         "    table.cell(dashboard, 0, 1, \"Buy setup\")",
         "    table.cell(dashboard, 1, 1, buySetup ? \"READY\" : \"NO\", text_color=buySetup ? color.lime : color.gray)",
@@ -212,7 +212,7 @@ export function compilePine(c: StrategyConfig): string {
       lines.push(
         `var table dashboard = table.new(position.top_right, 2, ${rows}, border_width=1)`,
         "if barstate.islast",
-        "    table.cell(dashboard, 0, 0, \"PineForge\", bgcolor=color.new(color.blue, 70), text_color=color.white)",
+        "    table.cell(dashboard, 0, 0, \"Kohen Pine\", bgcolor=color.new(color.blue, 70), text_color=color.white)",
         `    table.cell(dashboard, 1, 0, \"${allowShort ? "LONG/SHORT" : "LONG ONLY"}\")`,
         "    table.cell(dashboard, 0, 1, \"Long setup\")",
         "    table.cell(dashboard, 1, 1, longSetup ? \"READY\" : \"NO\", text_color=longSetup ? color.lime : color.gray)",

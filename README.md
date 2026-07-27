@@ -1,4 +1,4 @@
-# PineScript Coder / PineForge Studio
+# Kohen Pine Studio
 
 A deterministic Pine Script v6 strategy and indicator builder. It is not a small snippet generator: users choose trading style, direction, entry event, higher-timeframe bias, trend filters, momentum, volume, divergence, exits, risk rules, alerts and visuals. The app explains the exact behavior before generating editable Pine code.
 

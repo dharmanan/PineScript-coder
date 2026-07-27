@@ -11,7 +11,7 @@ function compileValidatedBnb30m(config: StrategyConfig): string {
 
   const lines = [
     "//@version=6",
-    "// PineForge historical research profile: BNBUSDT, 30-minute chart.",
+    "// Kohen Pine Studio historical research profile: BNBUSDT, 30-minute chart.",
     "// Selected: 2019-2022. Validation: 2023-2024. Forward: 2025 and 2026 H1.",
     "// Forward results stayed positive at normal costs, but 2025 failed the stress-cost case",
     "// and later samples were small. This is not a universal validated default.",

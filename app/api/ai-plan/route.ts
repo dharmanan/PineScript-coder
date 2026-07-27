@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-const bodySchema = z.object({ prompt: z.string().min(10).max(4000) });
+const bodySchema = z.object({
+  prompt: z.string().min(10).max(4000),
+  language: z.enum(["tr", "en"]).default("en")
+});
 
-const systemPrompt = `You convert a trader's plain-language request into a conservative PineForge configuration plan. Do not promise profitability. Return JSON only with these keys: summary (string), suggestedPreset (string), choices (array of short strings), warnings (array of short strings). The deterministic builder remains the source of truth.`;
+const systemPrompt = (language: "tr" | "en") =>
+  `You convert a trader's plain-language request into a conservative Kohen Pine Studio configuration plan. Do not promise profitability. Return JSON only with these keys: summary (string), suggestedPreset (string), choices (array of short strings), warnings (array of short strings). The deterministic builder remains the source of truth. Write all user-facing JSON values in ${language === "tr" ? "Turkish" : "English"}.`;
 
-async function callOpenAI(prompt: string) {
+async function callOpenAI(prompt: string, language: "tr" | "en") {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("OPENAI_API_KEY is not configured");
   const response = await fetch("https://api.openai.com/v1/responses", {
@@ -14,7 +18,7 @@ async function callOpenAI(prompt: string) {
     body: JSON.stringify({
       model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
       input: [
-        { role: "system", content: [{ type: "input_text", text: systemPrompt }] },
+        { role: "system", content: [{ type: "input_text", text: systemPrompt(language) }] },
         { role: "user", content: [{ type: "input_text", text: prompt }] }
       ],
       text: { format: { type: "json_object" } }
@@ -26,7 +30,7 @@ async function callOpenAI(prompt: string) {
   return JSON.parse(text);
 }
 
-async function callGemini(prompt: string) {
+async function callGemini(prompt: string, language: "tr" | "en") {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not configured");
   const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -34,7 +38,7 @@ async function callGemini(prompt: string) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: systemPrompt }] },
+      systemInstruction: { parts: [{ text: systemPrompt(language) }] },
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: { responseMimeType: "application/json" }
     })
@@ -47,9 +51,11 @@ async function callGemini(prompt: string) {
 
 export async function POST(request: Request) {
   try {
-    const { prompt } = bodySchema.parse(await request.json());
+    const { prompt, language } = bodySchema.parse(await request.json());
     const provider = (process.env.AI_PROVIDER || "gemini").toLowerCase();
-    const result = provider === "openai" ? await callOpenAI(prompt) : await callGemini(prompt);
+    const result = provider === "openai"
+      ? await callOpenAI(prompt, language)
+      : await callGemini(prompt, language);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "AI planning failed" }, { status: 400 });

@@ -16,7 +16,7 @@ function compileKohenDive(config: StrategyConfig): string {
 
   return `// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 // Original concept: Kohen Dive V4.6 (Anchored VWAP Edition)
-// PineForge integration: confirmed signals, true rolling-low anchor, next-open risk tracking and dashboard metrics.
+// Kohen Pine Studio integration: confirmed signals, true rolling-low anchor, next-open risk tracking and dashboard metrics.
 // Adaptive profile: regime-aware reversals plus trend-aligned pullback continuation entries.
 // Default profile: Active 4H. Strict 4H remains selectable for isolated signal-profile A/B tests.
 //@version=6
@@ -28,7 +28,7 @@ string G_SMOOTH = "Smoothing"
 string G_STYLE = "Visualization"
 string G_SIG = "Signal Settings"
 string G_PD = "Premium/Discount & Anchored VWAP"
-string G_RISK = "PineForge Risk & Measurement"
+string G_RISK = "Kohen Pine Risk & Measurement"
 
 // === Visibility ===
 showNeutralCandle = input.bool(false, "Show neutral candles", group=G_VIS)
@@ -82,7 +82,7 @@ showPdLines = input.bool(true, "Show high/low lines", group=G_PD)
 showAnchoredVwap = input.bool(true, "Show anchored VWAP", group=G_PD)
 vwapAnchorLookback = input.int(200, "VWAP anchor lookback", minval=20, maxval=2000, group=G_PD, tooltip="VWAP starts at the actual lowest-low bar still inside this rolling window.")
 
-// === PineForge risk and measurement ===
+// === Kohen Pine risk and measurement ===
 expectedChartTimeframe = input.timeframe("${config.chartTimeframe}", "Expected chart timeframe", group=G_RISK)
 enforceChartTimeframe = input.bool(${pineBool(config.execution.enforceChartTimeframe)}, "Block signals on a different chart timeframe", group=G_RISK)
 entryType = input.string("Market (next open)", "Entry type", options=["Market (next open)", "Limit (pullback)"], group=G_RISK)
@@ -292,7 +292,7 @@ if showWeak and confirmationOk and weakBuy
 if showWeak and confirmationOk and weakSell
     label.new(bar_index, high, "S", style=label.style_label_down, color=color.new(color.red, 30), textcolor=color.white, yloc=yloc.abovebar, size=size.tiny, force_overlay=true)
 
-// === PineForge next-open risk lifecycle ===
+// === Kohen Pine next-open risk lifecycle ===
 atrValue = ta.atr(atrLength)
 var float riskEntry = na
 var float riskStop = na
@@ -534,7 +534,7 @@ if barstate.islast and showDashboardPanel
 
 // === Alerts ===
 ${config.execution.alertsEnabled ? `alertcondition(acceptedLongSignal, "Kohen Dive strong buy", "KOHEN DIVE BUY {{ticker}} @ {{close}}")
-alertcondition(acceptedShortSignal, "Kohen Dive strong sell", "KOHEN DIVE SELL {{ticker}} @ {{close}}")` : "// Alerts disabled in PineForge."}
+alertcondition(acceptedShortSignal, "Kohen Dive strong sell", "KOHEN DIVE SELL {{ticker}} @ {{close}}")` : "// Alerts disabled in Kohen Pine Studio."}
 `;
 }
 

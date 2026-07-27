@@ -126,8 +126,8 @@ describe("visual plan isolation", () => {
 
     expect(cleanCode).toContain("longTrigger = ta.crossover(close, emaFast)");
     expect(advancedCode).toContain("longTrigger = ta.crossover(close, emaFast)");
-    expect(cleanCode).toContain('visualProfile = "Clean" // Selected in PineForge Studio');
-    expect(advancedCode).toContain('visualProfile = "Advanced" // Selected in PineForge Studio');
+    expect(cleanCode).toContain('visualProfile = "Clean" // Selected in Kohen Pine Studio');
+    expect(advancedCode).toContain('visualProfile = "Advanced" // Selected in Kohen Pine Studio');
     expect(cleanCode).not.toContain("visualProfile = input.string(");
     expect(advancedCode).not.toContain("visualProfile = input.string(");
     expect(cleanCode).not.toBe(advancedCode);

@@ -8,7 +8,6 @@ const rsiPanePresetNames = [
   "Fast EMA Scalper",
   "VWAP Reclaim",
   "Swing Structure Trend",
-  "Spot Accumulation",
   "Breakout Momentum",
   "Selective Multi-Timeframe",
   "Long-Term Trend Guard"

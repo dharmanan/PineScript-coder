@@ -37,7 +37,6 @@ export type PresetId =
   | "fast_ema_scalper"
   | "vwap_session_trader"
   | "swing_trend_4h"
-  | "spot_accumulation"
   | "supertrend_volume"
   | "breakout_momentum"
   | "rsi_divergence_reversal"

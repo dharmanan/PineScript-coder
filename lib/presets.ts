@@ -24,15 +24,11 @@ const preset = (overrides: Partial<StrategyConfig> & { name: string; presetId: N
   visual: { ...defaultConfig.visual, ...(overrides.visual ?? {}) }
 });
 
-// Chart timeframe, signal mode, trigger window, risk/reward and exit management are
-// measured, not guessed. Each was chosen from the 2019-2022 development partition by
-// research/preset-sweep, keeping the highest expectancy among configurations that were
-// profitable in at least 60% of quarters, then reported against 2023-2025 validation and
-// finally against the untouched 2026 holdout. Six of the eight held up on the holdout;
-// the two that did not are marked below. See research/preset-sweep/results-v2.md.
+// Chart timeframe, signal mode, trigger window, risk/reward and exit management were
+// measured across development, validation and holdout periods rather than guessed.
 export const presets: StrategyConfig[] = [
   // LOCKED 26 July 2026 — reviewed on all four symbols in TradingView, panel figures matched
-  // the measurement, see research/preset-sweep/PRESET-REVIEW-PLAN.md
+  // the measurement.
   //
   // Money profile, holdout 2026: 151 trades, 19.2% win, +0.138R — but ETH carries all of it
   // (+1.079R) while BNB (-0.524R) and BTC (-0.138R) lose. Kept as the alternative, not the
@@ -51,7 +47,6 @@ export const presets: StrategyConfig[] = [
   }),
   // LOCKED 26 July 2026 — reviewed on all four symbols in TradingView across four reward
   // targets, panel figures matched the measurement on every symbol.
-  // See research/preset-sweep/PRESET-REVIEW-PLAN.md
   //
   // Money profile unchanged at reward 6: positive on ETH, BTC and SOL, only -0.038R on BNB.
   //
@@ -82,7 +77,7 @@ export const presets: StrategyConfig[] = [
   }),
   // LOCKED 26 July 2026 — two structural changes and one exit change, read on the chart on all
   // four symbols. The preset that was marked "measured and did NOT hold" is now the most
-  // consistent in the set. See research/preset-sweep/PRESET-REVIEW-PLAN.md
+  // consistent in the set.
   //
   // This preset was marked "measured and did NOT hold": negative on all four symbols on the
   // 2026 holdout, -0.240R per trade. The reason turned out to be the one setting its name is
@@ -139,7 +134,6 @@ export const presets: StrategyConfig[] = [
   // LOCKED 27 July 2026 — two changes: the SMA-200 filter is switched off, and the win-rate
   // profile moves to reward 1.25 with a 1R/0.5R trail. Read on all four symbols in TradingView:
   // 72 trades, 50.0% win, +0.27R, against a measurement of 72 trades and 50.0%.
-  // See research/preset-sweep/PRESET-REVIEW-PLAN.md
   //
   // Locked with a caveat that belongs on the label rather than buried: it hits its win rate and
   // makes almost no money. Over January to July 2026 the four symbols together produced +0.27R
@@ -193,18 +187,8 @@ export const presets: StrategyConfig[] = [
     risk: { ...defaultConfig.risk, atrMultiple: 2.5, riskReward: 6 },
     winRateProfile: winRate({ triggerWindow: 5, riskReward: 1.25, trailStartR: 1, trailDistanceR: 0.5 })
   }),
-  // No stop and no target, so a win and a loss are not defined. Never measured.
-  preset({
-    presetId: "spot_accumulation", name: "Spot Accumulation", style: "spot", direction: "spot_buy_exit",
-    chartTimeframe: "D", entryTrigger: "pullback_reclaim", spotExitMode: "combined",
-    trend: { ...defaultConfig.trend, emaFast: 50, emaSlow: 100, longMaLength: 200, vwapEnabled: false },
-    higherTimeframe: { ...defaultConfig.higherTimeframe, timeframe: "W", length: 50, closedBarOnly: true },
-    momentum: { ...defaultConfig.momentum, rsiLong: 45, rsiShort: 40, rsiExit: 65 },
-    risk: { ...defaultConfig.risk, stopMode: "none", takeProfitMode: "none" }
-  }),
   // LOCKED 26 July 2026 — reviewed on all four symbols in TradingView against the 2026
   // holdout window, panel figures matched the measurement.
-  // See research/preset-sweep/PRESET-REVIEW-PLAN.md
   //
   // Money profile unchanged at reward 5. holdout 2026: 271 trades, 21.0% win, +0.240R per
   // trade, positive on all four symbols — one of only two presets in the set that manages
@@ -236,7 +220,6 @@ export const presets: StrategyConfig[] = [
   // LOCKED 26 July 2026 — the only preset whose review changed its structure rather than just
   // its reward target: breakout channel 20 -> 10, ADX threshold 20 -> 30, stop confirmation
   // wick -> candle close. Read on all four symbols in TradingView against the 2026 holdout.
-  // See research/preset-sweep/PRESET-REVIEW-PLAN.md
   //
   // Reviewed differently from the three before it, and that is the point. Those three moved
   // one knob, the reward target, because that was the only axis any sweep had ever covered.
@@ -348,7 +331,7 @@ export const presets: StrategyConfig[] = [
   // What the review found first was that the old numbers were being read wrong. A pooled figure
   // across the four symbols said this preset made +0.269R on the 2026 holdout. Per symbol it was
   // BTC -0.572R on 15 trades and BNB +0.158R on 9 — one symbol carrying a preset that was not
-  // usable on the other three. Every measurement tool in research/preset-sweep now refuses to
+  // usable on the other three. The measurement reports therefore refuse to
   // print a pooled row for exactly this reason.
   //
   // Three settings moved, each measured on its own before they were measured together:
@@ -402,7 +385,7 @@ export const presets: StrategyConfig[] = [
   //
   // Pullback reclaim, score 90/95 and a 60-minute chart were measured independently and
   // rejected. The 30-minute EMA-cross structure, score 85 win-rate profile and all risk
-  // settings remain unchanged. See research/preset-sweep/PRESET-REVIEW-PLAN.md.
+  // settings remain unchanged.
   preset({
     presetId: "long_term_trend_guard", name: "Long-Term Trend Guard", style: "long_term", direction: "long_short",
     chartTimeframe: "30", triggerWindow: 5, entryTrigger: "ema_cross",

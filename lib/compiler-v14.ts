@@ -12,7 +12,6 @@ const rsiPanePresetIds = new Set<NonNullable<StrategyConfig["presetId"]>>([
   "vwap_session_trader",
   "swing_trend_4h",
   "rsi_divergence_reversal",
-  "spot_accumulation",
   "breakout_momentum",
   "selective_multi_timeframe",
   "long_term_trend_guard"

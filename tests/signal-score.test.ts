@@ -125,9 +125,14 @@ describe("signal score", () => {
     expect(code).toContain('"L " + str.tostring(longScore)');
   });
 
-  it("stays out of a spot preset", () => {
-    const spot = presets.find((preset) => preset.presetId === "spot_accumulation");
-    const code = indicator(spot as StrategyConfig);
+  it("stays out of a custom spot configuration", () => {
+    const spot: StrategyConfig = {
+      ...defaultConfig,
+      style: "spot",
+      direction: "spot_buy_exit",
+      risk: { ...defaultConfig.risk, stopMode: "none", takeProfitMode: "none" }
+    };
+    const code = indicator(spot);
     expect(code).not.toContain("longScoreRaw");
     expect(code).not.toContain("signalMode");
   });

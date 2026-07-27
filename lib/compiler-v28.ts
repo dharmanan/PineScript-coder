@@ -1,9 +1,8 @@
 import { compilePine as compileBase } from "./compiler-v27";
 import type { StrategyConfig } from "./types";
 
-// Swing-structure bias, the one ICT mechanism that beat the higher-timeframe average on
-// development, validation and the 2026 holdout at once (research/preset-sweep,
-// run-sweep-ict.mjs). It answers the same question as htfBull — which side is allowed —
+// Swing-structure bias beat the higher-timeframe average across development, validation and
+// the 2026 holdout. It answers the same question as htfBull — which side is allowed —
 // but reads the last two confirmed highs and lows instead of waiting for an average to
 // turn, so it flips on the structural break rather than after it.
 //

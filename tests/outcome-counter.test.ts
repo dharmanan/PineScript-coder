@@ -19,7 +19,7 @@ const countable = presets.filter(
 describe("outcome counter", () => {
   it("covers every preset that defines both a stop and a target", () => {
     expect(countable).toHaveLength(8);
-    expect(presets).toHaveLength(10);
+    expect(presets).toHaveLength(9);
   });
 
   for (const preset of countable) {
@@ -108,10 +108,14 @@ describe("outcome counter", () => {
     expect(increments).toHaveLength(4);
   });
 
-  it("stays out of a spot preset that has no stop and no target", () => {
-    const spot = presets.find((preset) => preset.presetId === "spot_accumulation");
-    expect(spot).toBeDefined();
-    const code = indicator(spot as StrategyConfig);
+  it("stays out of a custom spot config that has no stop and no target", () => {
+    const spot: StrategyConfig = {
+      ...defaultConfig,
+      style: "spot",
+      direction: "spot_buy_exit",
+      risk: { ...defaultConfig.risk, stopMode: "none", takeProfitMode: "none" }
+    };
+    const code = indicator(spot);
     expect(code).not.toContain("riskWinCount");
     expect(code).not.toContain('"Win rate (net)"');
   });

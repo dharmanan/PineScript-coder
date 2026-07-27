@@ -4,7 +4,6 @@ import { compilePine } from "../lib/compiler";
 import { explainConfig } from "../lib/explain";
 import { presets } from "../lib/presets";
 import { analyzeGeneratedPine } from "../lib/static-analyzer";
-import { presets as genericSweepPresets } from "../research/preset-sweep/config-entry";
 import type { StrategyConfig } from "../lib/types";
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
@@ -16,7 +15,6 @@ describe("Kohen Dive PineForge preset", () => {
     expect(presets.some((item) => item.presetId === "rsi_divergence_reversal")).toBe(false);
     expect(presets.some((item) => item.presetId === "kohen_dive")).toBe(false);
     expect(presets.filter((item) => item.name.startsWith("Kohen Dive"))).toEqual([adaptivePreset]);
-    expect(genericSweepPresets.some((item) => item.presetId === "kohen_dive_adaptive")).toBe(false);
   });
 
   it("keeps the original pressure family and fixes the rolling VWAP anchor", () => {
@@ -114,7 +112,6 @@ describe("Kohen Dive PineForge preset", () => {
     expect(adaptivePreset.execution.cooldownBars).toBe(2);
     expect(adaptiveCode).toContain('adaptiveMode = input.bool(true, "Adaptive regime engine"');
     expect(adaptiveCode).toContain('reverseOnOppositeSignal = input.bool(false, "Exit and reverse on opposite signal"');
-    expect(genericSweepPresets.some((item) => item.presetId === "kohen_dive_adaptive")).toBe(false);
   });
 
   it("counts the adaptive 4-hour evidence window from 1 January 2024 by default", () => {

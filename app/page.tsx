@@ -1,13 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { compilePine } from "@/lib/compiler";
 import { defaultConfig } from "@/lib/defaults";
 import { explainConfig } from "@/lib/explain";
+import { orderPresetsForDisplay } from "@/lib/preset-display-order";
 import { presets } from "@/lib/presets";
 import { toPublicIndicatorConfig } from "@/lib/public-indicator-config";
+import {
+  directionDisplayName,
+  presetDisplayName,
+  readUiLanguageCookie,
+  resolveUiLanguage,
+  serializeUiLanguageCookie,
+  timeframeDisplayName,
+  UI_LANGUAGE_STORAGE_KEY,
+  uiText
+} from "@/lib/ui-i18n";
 import { applyVisualProfile } from "@/lib/visual-profile-config";
 import type { StrategyConfig, VisualProfile } from "@/lib/types";
+import type { UiLanguage } from "@/lib/ui-i18n";
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 
@@ -23,8 +35,11 @@ const percentages = [0.5, 1, 1.5, 2, 3, 5, 8, 10];
 const riskRewards = [1, 1.5, 2, 2.5, 3, 4, 5];
 const pivotLengths = [2, 3, 5, 7, 10];
 const breakoutLengths = [10, 14, 20, 30, 50, 100];
+const displayPresets = orderPresetsForDisplay(presets);
+const UiLanguageContext = createContext<UiLanguage>("en");
 
 export default function Home() {
+  const [language, setLanguage] = useState<UiLanguage>("en");
   const [config, setConfig] = useState<StrategyConfig>(toPublicIndicatorConfig(clone(defaultConfig)));
   const [selectedPreset, setSelectedPreset] = useState<string>("Custom configuration");
   const [tab, setTab] = useState<"builder" | "code" | "ai">("builder");
@@ -33,7 +48,25 @@ export default function Home() {
   const [aiLoading, setAiLoading] = useState(false);
   const publicConfig = useMemo(() => toPublicIndicatorConfig(config), [config]);
   const code = useMemo(() => compilePine(publicConfig), [publicConfig]);
-  const explanation = useMemo(() => explainConfig(publicConfig), [publicConfig]);
+  const explanation = useMemo(() => explainConfig(publicConfig, language), [publicConfig, language]);
+  const selectedPresetDisplay = presetDisplayName(language, selectedPreset);
+  const t = (text: string) => uiText(language, text);
+
+  useEffect(() => {
+    const storedLanguage = window.localStorage.getItem(UI_LANGUAGE_STORAGE_KEY);
+    const cookieLanguage = readUiLanguageCookie(document.cookie);
+    setLanguage(resolveUiLanguage(cookieLanguage, storedLanguage, window.navigator.languages));
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
+  const chooseLanguage = (nextLanguage: UiLanguage) => {
+    setLanguage(nextLanguage);
+    window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, nextLanguage);
+    document.cookie = serializeUiLanguageCookie(nextLanguage);
+  };
 
   const setNested = (section: keyof StrategyConfig, key: string, value: unknown) => {
     setSelectedPreset("Custom configuration");
@@ -90,7 +123,7 @@ export default function Home() {
     setAiLoading(true);
     setAiResult(null);
     try {
-      const response = await fetch("/api/ai-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: aiPrompt }) });
+      const response = await fetch("/api/ai-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: aiPrompt, language }) });
       setAiResult(await response.json());
     } finally {
       setAiLoading(false);
@@ -98,32 +131,45 @@ export default function Home() {
   };
 
   return (
+    <UiLanguageContext.Provider value={language}>
     <main>
       <header className="hero">
         <div>
-          <span className="eyebrow">OPEN SOURCE · DETERMINISTIC · PINE SCRIPT v6</span>
-          <h1>PineForge Studio</h1>
-          <p>Choose how you trade, inspect the exact behavior in plain language, and generate editable Pine Script indicators without hidden AI decisions.</p>
+          <span className="eyebrow">{t("OPEN SOURCE · DETERMINISTIC · PINE SCRIPT v6")}</span>
+          <h1>Kohen Pine Studio</h1>
+          <p>{t("Choose how you trade, inspect the exact behavior in plain language, and generate editable Pine Script indicators without hidden AI decisions.")}</p>
         </div>
         <div className="hero-actions">
-          <button onClick={() => navigator.clipboard.writeText(code)}>Copy Pine</button>
-          <button className="primary" onClick={download}>Download .pine</button>
+          <div className="language-switch" role="group" aria-label={t("Language")}>
+            <button className={language === "tr" ? "active" : ""} aria-pressed={language === "tr"} onClick={() => chooseLanguage("tr")}>TR</button>
+            <button className={language === "en" ? "active" : ""} aria-pressed={language === "en"} onClick={() => chooseLanguage("en")}>EN</button>
+          </div>
+          <div className="social-links" aria-label="Social links">
+            <a href="https://x.com/KohenEric" target="_blank" rel="noreferrer" aria-label={t("X profile")} title={t("X profile")}>
+              <XIcon />
+            </a>
+            <a href="https://github.com/dharmanan/PineScript-coder" target="_blank" rel="noreferrer" aria-label={t("GitHub repository")} title={t("GitHub repository")}>
+              <GitHubIcon />
+            </a>
+          </div>
+          <button onClick={() => navigator.clipboard.writeText(code)}>{t("Copy Pine")}</button>
+          <button className="primary" onClick={download}>{t("Download .pine")}</button>
         </div>
       </header>
 
       <nav className="tabs">
-        <button className={tab === "builder" ? "active" : ""} onClick={() => setTab("builder")}>Guided Builder</button>
-        <button className={tab === "code" ? "active" : ""} onClick={() => setTab("code")}>Generated Script</button>
-        <button className={tab === "ai" ? "active" : ""} onClick={() => setTab("ai")}>Optional AI Planner</button>
+        <button className={tab === "builder" ? "active" : ""} onClick={() => setTab("builder")}>{t("Guided Builder")}</button>
+        <button className={tab === "code" ? "active" : ""} onClick={() => setTab("code")}>{t("Generated Script")}</button>
+        <button className={tab === "ai" ? "active" : ""} onClick={() => setTab("ai")}>{t("Optional AI Planner")}</button>
       </nav>
 
       {tab === "builder" && (
         <div className="workspace">
           <section className="panel controls">
-            <div className="selected-strip"><span>Selected preset</span><strong>{selectedPreset}</strong><span>Indicator · {publicConfig.direction.replaceAll("_", " ")} · {publicConfig.chartTimeframe}</span></div>
-            <h2>Start from a complete indicator</h2>
+            <div className="selected-strip"><span>{t("Selected preset")}</span><strong>{selectedPresetDisplay}</strong><span>{t("Indicator")} · {directionDisplayName(language, publicConfig.direction)} · {publicConfig.chartTimeframe}</span></div>
+            <h2>{t("Start from a complete indicator")}</h2>
             <div className="preset-grid">
-              {presets.map((p) => <button className={selectedPreset === p.name ? "selected" : ""} key={p.name} onClick={() => choosePreset(p)}>{selectedPreset === p.name ? "✓ " : ""}{p.name}</button>)}
+              {displayPresets.map((p) => <button className={selectedPreset === p.name ? "selected" : ""} key={p.name} onClick={() => choosePreset(p)}>{selectedPreset === p.name ? "✓ " : ""}{presetDisplayName(language, p.name)}</button>)}
             </div>
 
             {publicConfig.winRateProfile && (
@@ -135,9 +181,7 @@ export default function Home() {
                   options={[["money", "Money — fewer, larger wins"], ["win_rate", "Win rate — more, smaller wins"]]}
                 />
                 <p className="notice">
-                  Both settings were measured on the same data and both are compiled into the script.
-                  This picks the one it opens with; the other stays one dropdown away in the
-                  indicator&apos;s own settings, alongside a Custom option that hands every input back to you.
+                  {t("Both settings were measured on the same data and both are compiled into the script. This picks the one it opens with; the other stays one dropdown away in the indicator's own settings, alongside a Custom option that hands every input back to you.")}
                 </p>
               </div>
             )}
@@ -146,11 +190,11 @@ export default function Home() {
             <div className="two">
               <SelectField label="Trading style" value={publicConfig.style} onChange={(v) => setTop("style", v as any)} options={[["scalp", "Scalp"], ["intraday", "Intraday"], ["swing", "Swing"], ["spot", "Spot"], ["long_term", "Long term"]]} />
               <SelectField label="Direction" value={publicConfig.direction} onChange={(v) => setTop("direction", v as any)} options={[["long_short", "Long + Short"], ["long_only", "Long only"], ["spot_buy_exit", "Spot buy + exit"]]} />
-              <SelectField label="Chart timeframe" value={publicConfig.chartTimeframe} onChange={(v) => setTop("chartTimeframe", v)} options={timeframeOptions.map((v) => [v, timeframeLabel(v)])} />
+              <SelectField label="Chart timeframe" value={publicConfig.chartTimeframe} onChange={(v) => setTop("chartTimeframe", v)} options={timeframeOptions.map((v) => [v, timeframeDisplayName(language, v)])} />
               <SelectField label="Signal frequency" value={publicConfig.sensitivity} onChange={(v) => applySensitivity(v as any)} options={[["frequent", "More frequent"], ["balanced", "Balanced"], ["selective", "More selective"]]} />
               <SelectField label="Entry trigger" value={publicConfig.entryTrigger} onChange={(v) => setTop("entryTrigger", v as any)} options={[["trend_state", "Conditions remain valid"], ["ema_cross", "EMA crossover"], ["pullback_reclaim", "Fast EMA reclaim"], ["vwap_reclaim", "VWAP reclaim"], ["supertrend_flip", "Supertrend flip"], ["breakout", "Recent high/low breakout"]]} />
             </div>
-            <p className="notice"><strong>Indicator only:</strong> PineForge generates chart signals, visual risk levels, dashboards and alerts. It does not generate Strategy Tester orders.</p>
+            <p className="notice"><strong>{t("Indicator only:")}</strong> {t("Kohen Pine Studio generates chart signals, visual risk levels, dashboards and alerts. It does not generate Strategy Tester orders.")}</p>
 
             {publicConfig.direction === "spot_buy_exit" && (
               <SelectField label="Spot exit logic" value={publicConfig.spotExitMode} onChange={(v) => setTop("spotExitMode", v as any)} options={[["combined", "Combined reversal events"], ["trend_break", "Break below long MA"], ["ema_cross", "Bearish EMA crossover"], ["rsi_overbought", "RSI leaves overbought zone"], ["htf_bearish", "Higher timeframe turns bearish"]]} />
@@ -160,7 +204,7 @@ export default function Home() {
               <Check label="Use higher-timeframe bias" checked={publicConfig.higherTimeframe.enabled} onChange={(v) => setNested("higherTimeframe", "enabled", v)} />
               {publicConfig.higherTimeframe.enabled && <>
                 <div className="three">
-                  <SelectField label="Timeframe" value={publicConfig.higherTimeframe.timeframe} onChange={(v) => setNested("higherTimeframe", "timeframe", v)} options={timeframeOptions.map((v) => [v, timeframeLabel(v)])} />
+                  <SelectField label="Timeframe" value={publicConfig.higherTimeframe.timeframe} onChange={(v) => setNested("higherTimeframe", "timeframe", v)} options={timeframeOptions.map((v) => [v, timeframeDisplayName(language, v)])} />
                   <SelectField label="Method" value={publicConfig.higherTimeframe.method} onChange={(v) => setNested("higherTimeframe", "method", v)} options={[["ema", "EMA"], ["sma", "SMA"], ["supertrend", "Supertrend"]]} />
                   <NumberSelect label="Length" value={publicConfig.higherTimeframe.length} onChange={(v) => setNested("higherTimeframe", "length", v)} options={maLengths} />
                 </div>
@@ -199,7 +243,7 @@ export default function Home() {
 
             <Group title="Visual profile">
               <SelectField label="Chart presentation" value={publicConfig.visual.profile} onChange={(v) => chooseVisualProfile(v as VisualProfile)} options={[["clean", "Clean"], ["enhanced", "Enhanced"], ["advanced", "Advanced"]]} />
-              <p className="notice">Clean keeps the chart minimal. Enhanced adds setup bar colors and a trend ribbon. Advanced uses the strongest visual emphasis while keeping the same signal rules.</p>
+              <p className="notice">{t("Clean keeps the chart minimal. Enhanced adds setup bar colors and a trend ribbon. Advanced uses the strongest visual emphasis while keeping the same signal rules.")}</p>
             </Group>
 
             <Group title="Risk and execution">
@@ -220,33 +264,44 @@ export default function Home() {
           </section>
 
           <aside className="panel summary sticky">
-            <span className="eyebrow">PLAIN-LANGUAGE BEHAVIOR</span>
-            <h2>What this indicator will do</h2>
-            <div className="summary-badge">{selectedPreset}</div>
+            <span className="eyebrow">{t("PLAIN-LANGUAGE BEHAVIOR")}</span>
+            <h2>{t("What this indicator will do")}</h2>
+            <div className="summary-badge">{selectedPresetDisplay}</div>
             {explanation.map((line) => <p key={line}>{line}</p>)}
-            <div className="notice"><strong>Important:</strong> This is a deterministic signal generator, not a profitability guarantee. Review every signal and test the exact output before real use.</div>
-            <button className="primary wide" onClick={() => setTab("code")}>Generate and inspect indicator</button>
+            <div className="notice"><strong>{t("Important:")}</strong> {t("This is a deterministic signal generator, not a profitability guarantee. Review every signal and test the exact output before real use.")}</div>
+            <button className="primary wide" onClick={() => setTab("code")}>{t("Generate and inspect indicator")}</button>
           </aside>
         </div>
       )}
 
-      {tab === "code" && <section className="panel"><div className="code-head"><div><span className="eyebrow">DETERMINISTIC INDICATOR OUTPUT</span><h2>{publicConfig.name}</h2><p>{selectedPreset} · {publicConfig.direction.replaceAll("_", " ")} · indicator</p></div><div><button onClick={() => navigator.clipboard.writeText(code)}>Copy</button><button className="primary" onClick={download}>Download</button></div></div><pre>{code}</pre></section>}
+      {tab === "code" && <section className="panel"><div className="code-head"><div><span className="eyebrow">{t("DETERMINISTIC INDICATOR OUTPUT")}</span><h2>{publicConfig.name}</h2><p>{selectedPresetDisplay} · {directionDisplayName(language, publicConfig.direction)} · {t("indicator")}</p></div><div><button onClick={() => navigator.clipboard.writeText(code)}>{t("Copy")}</button><button className="primary" onClick={download}>{t("Download")}</button></div></div><pre>{code}</pre></section>}
 
-      {tab === "ai" && <section className="panel ai-panel"><span className="eyebrow">OPTIONAL · USER-SUPPLIED API KEY</span><h2>AI can fill the deterministic indicator form</h2><p>AI does not directly own the Pine output. It interprets a plain-language request into the same visible configuration used by the guided builder. Review every selected value before generation.</p><textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} placeholder="Example: Build a selective 15-minute long/short indicator using 4H bias, VWAP, volume and confirmed candles." /><button className="primary" disabled={!aiPrompt || aiLoading} onClick={askAI}>{aiLoading ? "Analyzing…" : "Analyze request"}</button>{aiResult && <pre>{JSON.stringify(aiResult, null, 2)}</pre>}</section>}
+      {tab === "ai" && <section className="panel ai-panel"><span className="eyebrow">{t("OPTIONAL · USER-SUPPLIED API KEY")}</span><h2>{t("AI can fill the deterministic indicator form")}</h2><p>{t("AI does not directly own the Pine output. It interprets a plain-language request into the same visible configuration used by the guided builder. Review every selected value before generation.")}</p><textarea value={aiPrompt} onChange={(e) => setAiPrompt(e.target.value)} placeholder={t("Example: Build a selective 15-minute long/short indicator using 4H bias, VWAP, volume and confirmed candles.")} /><button className="primary" disabled={!aiPrompt || aiLoading} onClick={askAI}>{t(aiLoading ? "Analyzing…" : "Analyze request")}</button>{aiResult && <pre>{JSON.stringify(aiResult, null, 2)}</pre>}</section>}
+
+      <footer className="site-footer">
+        <div className="footer-credit">
+          <span>{t("Designed by")}</span>
+          <a href="https://koraycifci.com/" target="_blank" rel="noreferrer" aria-label="Koray Cifci" title="Koray Cifci">
+            <img src="/brand/koray-cifci.png" alt="Koray Cifci" />
+          </a>
+        </div>
+        <p className="financial-disclaimer"><strong>{t("Not investment advice.")}</strong> {t("The signals, analyses and information in this application are provided for educational and research purposes only. They are not guaranteed to be accurate, complete, current or profitable, and may be misleading. Trading involves risk; you are solely responsible for your decisions.")}</p>
+      </footer>
     </main>
+    </UiLanguageContext.Provider>
   );
 }
 
-function timeframeLabel(value: string) {
-  if (value === "D") return "1 day";
-  if (value === "W") return "1 week";
-  if (value === "M") return "1 month";
-  const number = Number(value);
-  return number >= 60 ? `${number / 60} hour${number > 60 ? "s" : ""}` : `${number} minutes`;
+function Group({ title, children }: { title: string; children: React.ReactNode }) { const language = useContext(UiLanguageContext); return <section className="group"><h3>{uiText(language, title)}</h3>{children}</section>; }
+function Field({ label, children }: { label: string; children: React.ReactNode }) { const language = useContext(UiLanguageContext); return <label className="field"><span>{uiText(language, label)}</span>{children}</label>; }
+function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) { const language = useContext(UiLanguageContext); return <label className="check"><input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} /><span>{uiText(language, label)}</span></label>; }
+function SelectField({ label, value, options, onChange }: { label: string; value: string; options: Array<[string, string]>; onChange: (value: string) => void }) { const language = useContext(UiLanguageContext); return <Field label={label}><select value={value} onChange={(e) => onChange(e.target.value)}>{options.map(([v, l]) => <option key={v} value={v}>{uiText(language, l)}</option>)}</select></Field>; }
+function NumberSelect({ label, value, options, onChange }: { label: string; value: number; options: number[]; onChange: (value: number) => void }) { const values = options.includes(value) ? options : [...options, value].sort((a, b) => a - b); return <Field label={label}><select value={value} onChange={(e) => onChange(Number(e.target.value))}>{values.map((v) => <option key={v} value={v}>{v}</option>)}</select></Field>; }
+
+function XIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2.25h3.68l-8.04 9.19L24 21.75h-7.41l-5.8-7.59-6.64 7.59H.46l8.6-9.83L0 2.25h7.6l5.24 6.93 6.06-6.93Zm-1.29 17.29h2.04L6.49 4.34H4.3l13.31 15.2Z" /></svg>;
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) { return <section className="group"><h3>{title}</h3>{children}</section>; }
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="field"><span>{label}</span>{children}</label>; }
-function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) { return <label className="check"><input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} /><span>{label}</span></label>; }
-function SelectField({ label, value, options, onChange }: { label: string; value: string; options: Array<[string, string]>; onChange: (value: string) => void }) { return <Field label={label}><select value={value} onChange={(e) => onChange(e.target.value)}>{options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></Field>; }
-function NumberSelect({ label, value, options, onChange }: { label: string; value: number; options: number[]; onChange: (value: number) => void }) { const values = options.includes(value) ? options : [...options, value].sort((a, b) => a - b); return <Field label={label}><select value={value} onChange={(e) => onChange(Number(e.target.value))}>{values.map((v) => <option key={v} value={v}>{v}</option>)}</select></Field>; }
+function GitHubIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.58 2 12.24c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49 0-.24-.01-1.05-.01-1.9-2.78.62-3.37-1.2-3.37-1.2-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .08 1.53 1.05 1.53 1.05.9 1.57 2.35 1.12 2.92.86.09-.67.35-1.13.64-1.39-2.22-.26-4.56-1.15-4.56-5.09 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.31.1-2.73 0 0 .84-.28 2.75 1.05A9.3 9.3 0 0 1 12 6.4c.85 0 1.7.12 2.5.35 1.91-1.33 2.75-1.05 2.75-1.05.55 1.42.2 2.47.1 2.73.64.72 1.03 1.63 1.03 2.75 0 3.95-2.35 4.82-4.58 5.08.36.32.68.92.68 1.85 0 1.34-.01 2.42-.01 2.75 0 .27.18.59.69.49A10.25 10.25 0 0 0 22 12.24C22 6.58 17.52 2 12 2Z" /></svg>;
+}

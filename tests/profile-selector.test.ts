@@ -33,12 +33,6 @@ describe("profile selector", () => {
     );
   });
 
-  it("leaves the spot preset alone, since it has no reward target to trade away", () => {
-    const spot = presets.find((preset) => preset.presetId === "spot_accumulation") as StrategyConfig;
-    expect(spot.winRateProfile).toBeUndefined();
-    expect(indicator(spot)).not.toContain("profileMode");
-  });
-
   for (const preset of withProfile) {
     describe(preset.name, () => {
       const code = indicator(preset);
@@ -143,7 +137,7 @@ describe("profile selector", () => {
 
   // Presets that have been reviewed on all four symbols in TradingView and locked. Their
   // settings are not a suggestion any more: changing one without a new review should break
-  // the build. See research/preset-sweep/PRESET-REVIEW-PLAN.md for what each review found.
+  // the build.
   describe("locked presets", () => {
     const LOCKED: Record<string, { money: Partial<StrategyConfig["risk"]>; winRate: NonNullable<StrategyConfig["winRateProfile"]> }> = {
       balanced_intraday: {
@@ -322,7 +316,7 @@ describe("profile selector", () => {
 
       const explanation = explainConfig(preset).join(" ");
       expect(explanation).toContain("2.2 signals per symbol per month");
-      expect(explanation).toContain("sparse preset");
+      expect(explanation).toContain("deliberately selective");
       // The filter list must not advertise a gate the script no longer applies.
       expect(explanation).not.toContain("SMA 200");
     });

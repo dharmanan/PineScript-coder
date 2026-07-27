@@ -74,13 +74,6 @@ describe("measured preset defaults", () => {
     });
   }
 
-  it("leaves the spot preset untouched, since no win/loss is defined for it", () => {
-    const spot = byId("spot_accumulation");
-    expect(spot.chartTimeframe).toBe("D");
-    expect(spot.signalMode).toBe("all_filters");
-    expect(spot.risk.stopMode).toBe("none");
-  });
-
   it("keeps the locked Long-Term Trend Guard direction and win-rate score", () => {
     const preset = byId("long_term_trend_guard");
     expect(preset.direction).toBe("long_short");

@@ -13,7 +13,7 @@ export function compilePine(config: StrategyConfig): string {
   let code = compileBase(config);
   const label = profileLabel(config.visual.profile);
   const runtimeInput = `visualProfile = input.string("${label}", "Visual profile", options=["Clean", "Enhanced", "Advanced"])`;
-  const bakedProfile = `visualProfile = "${label}" // Selected in PineForge Studio`;
+  const bakedProfile = `visualProfile = "${label}" // Selected in Kohen Pine Studio`;
 
   if (!code.includes(runtimeInput)) throw new Error("Compiler transform anchor missing: visual profile input");
   code = code.replace(runtimeInput, bakedProfile);
