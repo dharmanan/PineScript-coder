@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a reproducible problem in the Studio or generated Pine Script.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Never include API keys, private trading information or account details.
+  - type: input
+    id: preset
+    attributes:
+      label: Preset or configuration
+      description: Which preset did you select, or which custom settings matter?
+      placeholder: Kohen Dive Adaptive, Active 4H
+    validations:
+      required: true
+  - type: input
+    id: timeframe
+    attributes:
+      label: Chart timeframe
+      description: The TradingView chart timeframe used for the test.
+      placeholder: 4 hours
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect the Studio or generated script to do?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Include error text or a redacted screenshot when helpful.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Select ...
+        2. Change ...
+        3. Generate ...
+        4. Observe ...
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I removed secrets and sensitive trading information.
+          required: true
+        - label: I searched existing issues and Discussions first.
+          required: true

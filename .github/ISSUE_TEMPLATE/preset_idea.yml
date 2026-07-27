@@ -1,0 +1,53 @@
+name: Preset idea
+description: Propose a focused, testable indicator preset or improvement.
+title: "preset: "
+labels:
+  - preset-idea
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Presets are not performance promises. Please describe observable rules and a validation plan rather than a guaranteed outcome.
+  - type: input
+    id: name
+    attributes:
+      label: Proposed preset name
+      placeholder: Example: Session VWAP Pullback
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem it should solve
+      description: Describe the chart behavior or workflow the preset should make clearer.
+    validations:
+      required: true
+  - type: textarea
+    id: rules
+    attributes:
+      label: Suggested visible rules
+      description: Describe the intended timeframe, direction, entry event, filters and exit/risk behavior.
+      placeholder: |
+        - Timeframe:
+        - Long/short/spot:
+        - Entry event:
+        - Filters:
+        - Risk and exit:
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation idea
+      description: Which symbols, date range and metrics should be checked before considering this preset?
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I understand that a preset proposal is not a request for a profitability claim.
+          required: true
+        - label: I removed secrets and sensitive trading information.
+          required: true

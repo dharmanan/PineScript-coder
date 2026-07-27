@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and general discussion
+    url: https://github.com/dharmanan/PineScript-coder/discussions
+    about: Ask usage questions or discuss broad ideas in GitHub Discussions.
+  - name: Security policy
+    url: https://github.com/dharmanan/PineScript-coder/security/policy
+    about: Read the private reporting route before disclosing a vulnerability.
