@@ -2,7 +2,7 @@
 
 > ## Yeni oturum buradan başlar
 >
-> **Sıradaki iş:** RSI Divergence Reversal incelemesi (8. sıra, aşağıdaki tabloda).
+> **Sıradaki iş:** Long-Term Trend Guard incelemesi (9. sıra, aşağıdaki tabloda).
 >
 > Selective Multi-Timeframe kilitlendi; isabet profili yeni yapıya karşı henüz
 > tam ızgarayla taranmadı (`run-winrate-axes.mjs`), o da o preset'in açık işi.
@@ -13,7 +13,7 @@
 > /Users/kohen/bin/safe-npm test
 > /Users/kohen/bin/safe-npm run dev -- -H 0.0.0.0
 > ```
-> 754 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
+> 717 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
 >
 > **Commit bekleyen değişiklikler stage'de.** Kohen commit'i kendi atar; Claude
 > `git commit`, `push`, `pull`, `fetch`, `reset`, `rebase` çalıştırmaz. Stage için
@@ -77,7 +77,7 @@ geçmek için. Bir preset kilitlendikten sonra o preset'e dokunulmaz — yeni bi
 tekrar açmayı gerektirirse, o karar ayrıca konuşulur.
 
 **Son güncelleme:** 27 Temmuz 2026
-**Kilitlenen:** 6 / 9 ölçülebilir preset
+**Kilitlenen:** 8 / 9 ölçülebilir preset
 
 ---
 
@@ -112,7 +112,7 @@ sayıları ölçümle uyuştuktan sonra kilitlenir.
 | 5 | VWAP Reclaim | 7.1 | **KİLİTLENDİ** ✓ |
 | 6 | Swing Structure Trend | 2.2 | **KİLİTLENDİ** ✓ |
 | 7 | Selective Multi-Timeframe | 5.5 | **KİLİTLENDİ** ✓ |
-| 8 | RSI Divergence Reversal | 5.3 | **SIRADA** |
+| 8 | Kohen Dive Adaptive | ≈3.8 | **KİLİTLENDİ** ✓ |
 | 9 | Long-Term Trend Guard | 1.9 | bekliyor |
 | — | Spot Accumulation | — | ölçülemez (stop/hedef yok) |
 
@@ -1093,50 +1093,354 @@ sembolde de başabaşın çok üstünde, ama tam ızgara taranmadı.
 
 ---
 
-## 8. RSI Divergence Reversal — bekliyor
+## 8. Kohen Dive Adaptive — ✅ KİLİTLENDİ (27 Temmuz 2026)
+
+### Tarihsel başlangıç: RSI Divergence Reversal — tamamlandı, üründen çıkarıldı
 
 `rsi_divergence_reversal` · 30 dakika · tetikleyici penceresi 1 · ATR×2
 
 - **Para profili:** risk/ödül 6
 - **İsabet profili:** risk/ödül 3.5, trailing 2/1.5, pencere 1
 
-| Dönem | Para profili | İsabet profili |
+### TradingView panel paritesi
+
+Kohen TradingView'de `2026-01-01`–`2026-07-01` aralığını sabitledi. `WIN RATE · rr 3.5`
+profili için okunan panel ile düzeltilmiş bağımsız motor:
+
+| Sembol | TradingView | Yerel beklenti | Sonuç |
+|---|---|---|---|
+| BTCUSDT | 16 / 57 · 73t · %21.9 · −27.97R | 73t · %21.9 · −27.97R | tam eşleşme |
+| ETHUSDT | 25 / 51 · 76t · %32.9 · −6.95R | 26 / 51 · 77t · %33.8 · −6.87R | 1 işlem / 0.08R fark |
+| BNBUSDT | 27 / 46 · 73t · %37.0 · +4.51R | 73t · %37.0 · +4.52R | yuvarlama farkı |
+| SOLUSDT | 24 / 50 · 74t · %32.4 · −8.12R | 74t · %32.4 · −8.12R | tam eşleşme |
+
+ETH'deki tek işlem farkı başlangıç ısınma sınırında; yön ve büyüklük aynı. Panel paritesi
+geçti. Dört sembolden yalnız BNB artıda olduğu için mevcut isabet profili başarılı bir
+çapraz-sembol varsayılan sayılmadı.
+
+### Bu okumada bulunan ölçüm motoru hatası
+
+İlk motor beklentisi TradingView'den kabaca yarı yarıya az işlem üretti. Sebep tarih
+ayarından ayrı bir parite hatasıydı:
+
+- Pine yalnız **RSI pivotunu** buluyor ve fiyatı o RSI pivot barından örnekliyor.
+- Sweep motoru yanlışlıkla RSI pivotu ile fiyat pivotunun aynı barda olmasını istiyordu.
+- Pine önceki pivot için 5–60 bar aralığını uyguluyor; sweep motoru bunu uygulamıyordu.
+
+Motor Pine'in kuralına getirildi ve sentetik regresyon testi eklendi. Düzeltmeden önceki
+bu preset'e ait bütün dönem, yapı ve profil sayıları geri çekildi; iyileştirme kararında
+kullanılmayacak.
+
+TradingView'de `countUntil=2029-01-01` ile gönderilen ilk isabet profili ekranları,
+yalnız hata teşhisinde kullanıldı:
+
+| Sembol | TradingView, 27 Temmuz | Yerel motor, veri 25 Temmuz sonunda |
 |---|---|---|
-| 2019-2022 | 912t · %22.7 · +0.190R | 965t · %36.7 · +0.082R |
-| 2023-2025 | 786t · %20.6 · +0.002R | 833t · %37.3 · +0.050R |
-| 2026 Oca-Haz | 135t · %15.6 · −0.208R | 146t · %33.6 · −0.028R |
-| 2026 Temmuz | 24t · %25.0 · +0.046R | 28t · %50.0 · +0.465R |
+| BTCUSDT | 23 / 64 · %26.4 · −21.92R | 23 / 63 · %26.7 · −21.30R |
+| ETHUSDT | 28 / 60 · %31.8 · −11.73R | 29 / 60 · %32.6 · −11.65R |
+| BNBUSDT | 30 / 54 · %35.7 · +0.98R | 30 / 53 · %36.1 · +2.04R |
+| SOLUSDT | 30 / 62 · %32.6 · −11.66R | 29 / 61 · %32.2 · −12.27R |
 
-**2026 Ocak-Haziran, sembol sembol:**
+Yerel arşiv bir gün geride olmasına rağmen işlem sayıları sembol başına 1–2 içinde,
+R sonuçları da aynı yönde ve yakındı. Ortak `2026-01-01`–`2026-07-01` penceresi yukarıdaki
+kesin kilit paritesini verdi.
 
-| Sembol | Para profili | İsabet profili |
+### Yapı ve zaman dilimi araştırması
+
+Seçim 2023–2024 geliştirmede, doğrulama 2025'te yapıldı; semboller havuzlanmadı.
+Şu eksenler tek tek ve sonra seçilen yapılarda çıkış ızgarasıyla ölçüldü:
+
+- grafik: 5dk, 15dk, 30dk, 1sa, 4sa;
+- RSI: 7, 9, 14, 21;
+- pivot: 2/2, 3/3, 5/5, 8/8, 10/10, 3/5, 5/3;
+- pivot aralığı: 2–30, 5–30, 5–60, 10–60, 5–90, 5–120;
+- RSI teyidi: 30/70, 35/65, 40/60, 45/55, 50/50 ve kapalı;
+- cooldown 0/2/5/10, ATR 1.5/2/2.5/3, wick/close stop;
+- hedef 1/1.25/1.5/2/2.5/3.5R; trailsiz, başabaş 1R ve dört trailing düzeni.
+
+RSI 7 geliştirmede dört sembolde birden hem isabeti hem işlem sayısını artırdı. 1R
+hedefle geliştirme isabeti %47.1–54.1 ve sembol başına 381–439 işleme çıktı. Fakat bir
+sonraki takvim döneminde:
+
+| Sembol | 30dk · RSI 7 · 1R doğrulama |
+|---|---|
+| BNBUSDT | 242t · %46.7 · −0.080R/işlem |
+| BTCUSDT | 224t · %53.6 · +0.040R/işlem |
+| ETHUSDT | 209t · %50.7 · −0.003R/işlem |
+| SOLUSDT | 238t · %51.7 · +0.023R/işlem |
+
+Başlık win rate yükseldi, ama BNB hâlâ anlamlı eksi ve ETH başabaş. 5dk grafik işlem
+sayısını yaklaşık dört katına çıkardı fakat geliştirmede dört sembolün tamamı eksideydi.
+15dk, 1sa ve 4sa da dört sembolde birlikte doğrulamayı geçmedi. Bu nedenle RSI 7 / 1R
+ürüne taşınmadı; yalnız win rate'i yüksek gösteren zarar eden bir profil olacaktı.
+
+### Kodda olmayan yapıların araştırması
+
+Düzenli/gizli divergence, EMA200 rejimi, düşük ADX, EMA20 reclaim, önceki mum kırılımı,
+4s trend hizası, pivot kalitesi, ters sinyalde kapatma ve süre çıkışı aileleri de
+çalıştırıldı; hiçbiri dört sembolde doğrulama kapılarını geçmedi.
+
+Geçmiş çalışmada yalnız `BNBUSDT 30dk · divergence → EMA9/WMA45 teyidi · EMA50/200
+rejimi · hacim ≥ SMA20×0.8 · 15-bar swing stop · 1.8R` profili 2023–2024 doğrulamayı
+geçmişti. Dondurulmuş hali ileri dönemlerde tekrar açıldı:
+
+| Dönem | Normal maliyet | Stres maliyeti |
 |---|---|---|
-| BNBUSDT | 33t · %12.1 · −0.409R | 36t · %30.6 · −0.037R |
-| BTCUSDT | 37t · %16.2 · −0.148R | 38t · %31.6 · −0.149R |
-| ETHUSDT | 36t · %19.4 · −0.082R | 40t · %40.0 · +0.088R |
-| SOLUSDT | 29t · %13.8 · −0.212R | 32t · %31.3 · −0.022R |
+| 2025 | 25t · %52.0 · +0.051 dönüş birimi · PF 1.231 | 25t · %48.0 · −0.039 · PF 0.858 |
+| 2026 Oca–Haz | 12t · %50.0 · +0.087 · PF 2.104 | 12t · %50.0 · +0.058 · PF 1.601 |
+| 2026 Temmuz | 1t · %0 · −0.009 | 1t · %0 · −0.012 |
 
-**2026 Temmuz, sembol sembol:**
+Normal maliyette ileri dönem artıda, fakat 2025 stres testini kaybediyor ve yılda 12–25
+işlem kullanıcının yüksek işlem sayısı hedefine uymuyor. Bu yüzden dört coine açılmadı ve
+ürünün yeni RSI varsayılanı yapılmadı.
 
-| Sembol | Para profili | İsabet profili |
-|---|---|---|
-| BNBUSDT | 6t · %16.7 · +0.130R | 6t · %16.7 · −0.286R |
-| BTCUSDT | 5t · %20.0 · −0.417R | 7t · %71.4 · +1.098R |
-| ETHUSDT | 6t · %16.7 · −0.259R | 6t · %50.0 · +0.498R |
-| SOLUSDT | 7t · %42.9 · +0.565R | 9t · %55.6 · +0.450R |
+### Uygulanan iyileştirmeler
 
-**Dikkat edilecekler:**
+- Sweep motorunun divergence kuralı Pine ile aynı hale getirildi ve üç regresyon testi eklendi.
+- 31 yapısal varyant ile 210 yapı/çıkış çiftini yeniden çalıştırabilen özel runner'lar eklendi.
+- BNB profilinin 2025+ ileri-test runner'ı eklendi; eski “holdout açılmadı” açıklaması düzeltildi.
+- PineForge açıklamasına, oluşturulan Pine koduna ve arayüze bu preset'in deneysel sinyal
+  statüsü eklendi; divergence çizimleri görsel araştırma olarak kaldı.
+- Ölçülen sıklık yaklaşık **sembol başına ayda 12.4 işlem** olarak üründe gösteriliyor.
 
-- **2026 Ocak-Haziran'da dört sembolde de zararda** (para profili). Bu preset de ölçümü
-  geçemedi.
-- Temmuz'da isabet profili %50 ve +0.465R — setin Temmuz'daki en iyi sonucu. Ama 28 işlem,
-  ve BTC'nin 7 işlemi (+1.098R) sonucun büyük kısmını taşıyor.
-- Bu preset RSI uyumsuzluğu üzerine kurulu ve ayrı bir panelde çiziliyor; görsel değeri
-  ölçülen değerinden yüksek olabilir.
-- **Karar önerisi:** üründen çıkarmak yerine "uyumsuzluk göstergesi" olarak konumlandırmak,
-  sinyal üreticisi olarak değil.
+**Karar:** ayarlar değiştirilmedi ve yüksek görünen ama zarar eden win-rate profili
+kilitlenmedi. Sonraki Kohen Dive karşılaştırması tamamlandıktan sonra bu preset hazır
+indikatör listesinden çıkarıldı; geçmiş ölçümleri yalnız reddedilmiş araştırma kaydı olarak
+bu bölümde korunuyor.
 
-**Durum:** ölçüm hazır, sıra bekliyor.
+---
+
+## 8A. Kohen Dive V4.6 — tamamlanan geçici karşılaştırma
+
+Kohen'in özgün `Dive V4.6` kodu #8'in yerine doğrudan geçirilmedi; PineForge'a ayrı bir
+deneysel preset olarak eklendi. Böylece aynı sembol ve tarih aralığında iki gösterge yan yana
+ölçülmeden çalışan bir preset silinmiyor.
+
+### Korunan yapı
+
+- yükselen `DI+` / `DI−` sayaçlarından trend basıncı ve gradient;
+- güçlü sniper buy/sell ailesi;
+- rolling 15-bar RSI divergence-pressure sinyalleri;
+- 100-bar premium/discount haritası;
+- alt panel histogramı, mum/wick boyaması ve zayıf B/S görsel işaretleri.
+
+### Düzeltilen ve eklenen yapı
+
+- Eski VWAP akümülatörü yalnız yeni dipte sıfırlanıyor, seçilen 200-bar pencerenin dışına
+  çıkan eski bir anchor'ı taşımaya devam edebiliyordu. Yeni sürüm her mumda gerçek
+  `ta.lowestbars(low, lookback)` barını bulup kümülatif fiyat×hacim farkından VWAP hesaplıyor.
+- Yalnız kapanmış mumdaki **güçlü** sinyaller ölçülen işleme dönüşüyor; zayıf B/S etiketleri
+  işlem sayılmıyor.
+- Sinyal mumu ATR mesafesini donduruyor, giriş bir sonraki mum açılışında yapılıyor.
+- Stop/target aynı mumda görülürse sonuç korumacı biçimde tam zarar sayılıyor.
+- Dashboard: setup/signal, chart TF, trend pressure, PD bölgesi, VWAP tarafı, risk state,
+  son sonuç ve tarihleri, wins/losses, net win rate, toplam R, profit factor, maksimum
+  drawdown ve iki tarafın canlı sinyal skoru.
+- Generic preset sweep bu özel compiler profilini bilerek dışarıda bırakıyor; ayrı referans
+  motoru yazılmadan başka bir stratejiymiş gibi sessizce ölçülmeyecek.
+
+### İlk TradingView karşılaştırması
+
+İlk okuma sırasında aşağıdaki ayarlar değiştirilmez:
+
+| Ayar | Değer |
+|---|---|
+| Grafik | 30 dakika |
+| Confirmed candles only | açık |
+| Signal mode | All filters |
+| Cooldown | 5 bar |
+| Trigger window | 1 bar |
+| RSI | 14 · buy ceiling 40 · sell floor 60 |
+| Strong threshold | 0.80 |
+| PD / VWAP lookback | 100 / 200 |
+| Giriş | Market, bir sonraki açılış |
+| Risk | ATR 14 × 2 · hedef 2R · wick stop |
+| Maliyet | taraf başına %0.01 |
+| Sayaç | `2026-01-01` dahil, `2026-07-01` hariç |
+
+BTCUSDT, ETHUSDT, BNBUSDT ve SOLUSDT için şu beş değer gönderilecek:
+`Wins / Losses`, `Win rate (net)`, `Net result`, `Profit factor`, `Max drawdown`.
+İşlem sayısı ve isabet birlikte yükselirken dört sembolün en az üçü artıda kalırsa çıkış
+ızgarası araştırmasına geçilecek. Dört sembolde yalnız biri taşıyorsa #8 gibi evrensel
+varsayılan yapılmayacak.
+
+**Durum:** ilk TradingView panel okuması tamamlandı. V4.6 yalnız geçici kontrol grubuydu;
+final Active 4H kararı verildikten sonra hazır indikatör listesinden çıkarıldı.
+
+---
+
+## 8B. Kohen Dive Adaptive — ACTIVE 4H KİLİTLENDİ ✓
+
+27 Temmuz 2026 TradingView okumalarında V4.6 baseline aşağıdaki sonucu verdi:
+
+| Sembol | W / L | Win rate | Net R | PF | Max DD |
+|---|---:|---:|---:|---:|---:|
+| BTCUSDT | 105 / 180 | %36.8 | +3.32R | 1.02 | 12.94R |
+| ETHUSDT | 94 / 189 | %33.2 | −26.93R | 0.86 | 28.04R |
+| BNBUSDT | 97 / 191 | %33.7 | −23.54R | 0.88 | 28.75R |
+| SOLUSDT | 97 / 189 | %33.9 | −21.81R | 0.89 | 31.79R |
+
+Dört panel birlikte 1.142 kapanmış işlem, 393 kazanç / 749 kayıp ve −68.96R gösteriyor.
+Bu toplam bir seçim ölçütü değil; yalnız sorunun büyüklüğünü özetliyor. Karar yine sembol
+başına verilecek. Ekranlardaki son girişler 26–27 Temmuz olduğu için bu okuma, 8A'da
+planlanan `2026-07-01` hariç bitişe ait değil. Adaptive A/B'de iki gösterge mutlaka aynı
+`countFrom/countUntil` değerleriyle çalıştırılacak.
+
+### Görsel teşhis
+
+BTC, ETH, BNB ve SOL ekranlarının ortak kaybı, `trend pressure` pozitif, EMA/VWAP rejimi
+yukarı ve fiyat anchored VWAP üstündeyken premium bölgedeki RSI divergence işaretinin
+doğrudan short işleme dönüşmesi. Divergence trendin yorulabileceğini söylüyor; trendin
+döndüğünü kanıtlamıyor. Özellikle ETH, BNB ve SOL'da yükseliş boyunca peş peşe strong sell
+ve stop dizisi bunun doğrudan örneği.
+
+### İlk Adaptive değişiklikleri
+
+- `EMA 20 > EMA 50`, fiyat fast EMA ve anchored VWAP üstünde, rolling VWAP yükseliyorsa
+  strong bull regime; simetriği strong bear regime sayılıyor.
+- Ham counter-trend divergence/sniper sinyali işlem açmıyor. Sekiz barlık pencere içinde
+  fiyat fast EMA'yı kırmalı veya basınç yön değiştirmeli ve güçlü karşı rejim zayıflamalı.
+- Frekansın tamamen çökmesini önlemek için trend yönünde RSI-50 geri alma ve yeniden
+  hızlanan basınçla continuation sinyali eklendi.
+- Aynı mumdaki long/short çakışmasında yüksek skor seçiliyor; skor eşitse işlem yok.
+- Adaptive varsayılanında opposite signal otomatik reversal kapalı. Kanıtlanmamış ters
+  sinyal çalışan pozisyonu erken kesmiyor.
+- ATR 14 × 2, 2R hedef, 5-bar cooldown ve sonraki açılış girişi baseline ile aynı kaldı.
+  İlk A/B sinyal mimarisini ölçüyor; çıkış hedefini değil.
+- Dashboard ayrıca `Long W/L`, `Short W/L`, `Continuation W/L`, `Reversal W/L` ve
+  `Raw reversals gated` sayaçlarını gösteriyor.
+
+### Terfi eşiği
+
+Adaptive sürüm “daha iyi” sayılmak için:
+
+1. dört sembolün en az üçünde `PF > 1.05` ve `Net R > 0`;
+2. hiçbir sembolde max drawdown baseline'dan yüksek değil;
+3. tamamlanan işlem sayısı baseline'ın en az %35'i;
+4. continuation ve reversal ayrımlarından en az biri tek başına pozitif yapı gösteriyor.
+
+İşlem sayısı %35'in altına düşerse isabet artsa bile evrensel varsayılan yapılmayacak.
+İlk eşik geçilirse ikinci aşamada yalnız risk/çıkış ızgarası (`1R–2R`, ATR `1.5–2.5`) ayrı
+bir tarih bölümünde ölçülecek; ilk sonuçtan hedef seçilip aynı veri üzerinde parlatılmayacak.
+
+**Durum:** ilk Adaptive sürüm uygulamaya eklendi ve aynı tarihli TradingView okumaları
+tamamlandı. Aşağıdaki Active 4H turu bu ilk sürümün yerini aldı ve final ürün kararı oldu.
+
+### ETH zaman dilimi pilotu — 27 Temmuz 2026
+
+Kullanıcının aynı Adaptive yapıyla yaptığı ilk ETHUSDT zaman dilimi okumaları:
+
+| TF | W / L | Win rate | Net R | PF | Max DD | Aile |
+|---|---:|---:|---:|---:|---:|---|
+| 4 saat | 6 / 4 | %60.0 | +7.95R | 2.98 | 2.01R | reversal 6/4, continuation 0/0 |
+| 1 saat | 10 / 23 | %30.3 | −3.43R | 0.85 | 6.23R | reversal 8/23, continuation 2/0 |
+| 30 dakika | 23 / 44 | %34.3 | +0.78R | 1.02 | 11.24R | reversal 22/43, continuation 1/1 |
+| 15 dakika | 11 / 23 | %32.4 | −1.88R | 0.92 | 11.41R | reversal 11/22, continuation 0/1 |
+| 5 dakika | 14 / 29 | %32.6 | −3.69R | 0.88 | 8.54R | reversal 14/27, continuation 0/2 |
+
+ETH pilotunda 4 saat açık ara iyi; fakat yalnız 10 kapanmış işlem var ve kazancın tamamı
+reversal ailesinden geliyor. Bu nedenle henüz parametre değiştirilmedi. Önce aynı 4 saat
+varsayılanı BTC, BNB ve SOL'da okunacak. En az üç sembolde pozitif kalırsa 4 saate özgü
+lookback/cooldown/confirmation ızgarası açılacak; tek ETH sonucu üzerinde ayar seçilmeyecek.
+
+Dashboard yalnız Kohen Dive özel compiler'ında 27 satırdan 19 satıra indirildi. Ayrı
+setup/signal satırları `Long state` ve `Short state` altında birleşti; son giriş/sonuç
+fiyatları, iki tarih, kapalı skor ve tekrarlanan profil satırı panelden çıkarıldı.
+Diğer hazır preset'lerin dashboard üreticisi değiştirilmedi.
+
+### Dört sembol 4 saat okuması ve tarih etkisi — 27 Temmuz 2026
+
+2026 başlangıcı:
+
+| Sembol | W / L | Win rate | Net R | PF | Max DD |
+|---|---:|---:|---:|---:|---:|
+| BTC | 2 / 7 | %22.2 | −3.07R | 0.57 | 5.04R |
+| ETH | 6 / 4 | %60.0 | +7.95R | 2.98 | 2.01R |
+| BNB | 4 / 6 | %40.0 | +1.93R | 1.32 | 2.02R |
+| SOL | 7 / 7 | %50.0 | +6.93R | 1.98 | 4.02R |
+
+2024 başlangıcı:
+
+| Sembol | W / L | Win rate | Net R | PF | Max DD | Continuation / reversal |
+|---|---:|---:|---:|---:|---:|---:|
+| BTC | 17 / 20 | %45.9 | +13.71R | 1.68 | 5.06R | 1/0 · 16/20 |
+| ETH | 20 / 21 | %48.8 | +18.79R | 1.89 | 8.07R | 0/1 · 20/20 |
+| BNB | 14 / 25 | %35.9 | +2.75R | 1.11 | 8.05R | 2/0 · 12/25 |
+| SOL | 19 / 24 | %44.2 | +13.82R | 1.57 | 5.02R | 1/1 · 18/23 |
+
+Sonuç: 4 saat yapısı dört sembolde 2024–bugün artıda, fakat yalnız 37–43 kapanmış
+işlem var. Continuation ailesi toplam örnekte sekiz kapanıştan ibaret; frekans pratikte
+reversal ailesine bağlı. Adaptive preset'in beklenen grafik zaman dilimi bu kanıta göre
+`240`, sayaç başlangıcı `2024-01-01` yapıldı. V4.6 baseline bu aşamada karşılaştırma için
+korundu, final kilitte hazır indikatör listesinden çıkarıldı.
+
+### Yerel 4 saat yapı/risk taraması
+
+`research/kohen-dive/run-4h-study.mjs`, Binance spot 5 dakikalık mumlarını 4 saate
+toplayıp 2024 geliştirme, 2025 doğrulama ve 2026 ileri dönem olarak ayırıyor. Dört sembol
+hiçbir raporda tek havuzda toplanmıyor. Taranan eksenler:
+
+- reversal teyit penceresi `8/12/16/24`;
+- fresh break, confirmed state, EMA break ve pressure break teyitleri;
+- strict RSI+gamma, RSI, EMA ve birleşik continuation;
+- cooldown `2/5`;
+- rolling-low ve simetrik rolling-high bearish VWAP;
+- ATR `1.5–2.5`, hedef `1R–2R`.
+
+Ham karşı-rejim sayacı TradingView'e çok yaklaştı: BTC `512/507`, ETH `527/519`,
+BNB `498/498`, SOL `539/537`. Buna karşılık kapanmış işlem sayısı yerel referansta
+TradingView'den belirgin yüksek kaldı; teyitten risk kabulüne giden katmanda parite henüz
+tam değil. Bu yüzden tarama yön gösterir, ürün varsayılanını tek başına terfi ettirmez.
+
+En önemli reddetme: 2024 ve 2025'te hem frekansı hem isabeti yükselten agresif
+`confirmed state + hybrid continuation` yapısı 2026'da BTC ve BNB'de eksiye döndü.
+Kısıtlı ızgaradaki hiçbir aday üç yıl × dört sembolün 12 hücresinin tamamında pozitif
+kalmadı; en iyi aday yalnız `10/12` hücreyi geçti.
+
+İlk uygulamada bu risk nedeniyle yalnız zaman dilimi ve tarih değiştirildi; TradingView
+sonucunun birebir aynı kalması kullanıcının istediği frekans iyileştirmesini karşılamadı.
+Bunun üzerine Adaptive Pine içinde iki açık A/B profili oluşturuldu:
+
+- `Active 4H` (yeni varsayılan): state recovery + hybrid RSI/EMA/pressure continuation,
+  cooldown 2, ATR×1.75, hedef 1.75R;
+- `Strict 4H`: önceki fresh-break + RSI/gamma confirmation davranışı.
+
+### Active 4H final TradingView doğrulaması ve kilit — 27 Temmuz 2026
+
+Eski göstergeler TradingView'den tamamen kaldırıldı, PineForge'dan yeniden üretilen
+`Kohen Dive Adaptive` dört sembole aynı ayarlarla eklendi. Dashboard dört ekranda da
+`ACTIVE 4H` ve `Chart TF: OK` gösterdi.
+
+| Sembol | W / L | Win rate | Net R | PF | Max DD | Continuation W / L | Reversal W / L |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| BTCUSDT | 58 / 71 | %45.0 | +29.33R | 1.41 | 10R | 24 / 33 | 34 / 38 |
+| ETHUSDT | 45 / 63 | %41.7 | +15.12R | 1.24 | 6.17R | 13 / 24 | 32 / 39 |
+| BNBUSDT | 45 / 68 | %39.8 | +9.92R | 1.14 | 8.41R | 18 / 29 | 27 / 39 |
+| SOLUSDT | 56 / 67 | %45.5 | +30.41R | 1.45 | 6.03R | 22 / 23 | 34 / 44 |
+
+Bu değerler 13:34'te korunan Active 4H kontrol sonuçlarıyla sembol bazında birebir
+eşleşti. Kilitlenen yapı:
+
+- grafik `4H / 240`, sayaç başlangıcı `2024-01-01`;
+- varsayılan profil `Active 4H`; `Strict 4H` aynı Pine içinde izole A/B seçeneği;
+- reversal teyidi state recovery;
+- continuation teyidi RSI **veya** EMA **veya** pressure recovery;
+- confirmed candles açık, cooldown `2`;
+- ATR `14 × 1.75`, hedef `1.75R`;
+- giriş `Market (next open)`;
+- Active profilde opposite signal reversal kapalı;
+- dashboard `2 × 19`; başlık `ACTIVE 4H` / `STRICT 4H`;
+- dashboard aile sayaçları: long/short, continuation/reversal ve raw reversals gated.
+
+**Kilit kararı:** #8 artık yalnız `Kohen Dive Adaptive` olarak ürün listesinde bulunur.
+`RSI Divergence Reversal`, geçici `Kohen Dive V4.6` ve “Experimental comparison preset”
+metni üründen çıkarıldı. Active 4H kontrol grubudur; kullanıcı açıkça yeniden açmadan sinyal
+motoru, varsayılan ayarlar veya dashboard genişletilmez. Yeni deneyler tek eksenli ve bağımsız
+A/B olmalı; her turda önceki deney varsayılana geri alınır ve dört sembol aynı tarihle ayrı
+raporlanır.
+
+Kilit regresyonları: Kohen Dive `12/12`, hedefli paket `470/470`, tam paket `717/717`;
+production build geçti. Hazır indikatör listesi yerel tarayıcıda doğrulandı.
 
 ---
 

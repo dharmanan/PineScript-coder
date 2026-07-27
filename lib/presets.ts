@@ -319,17 +319,27 @@ export const presets: StrategyConfig[] = [
     risk: { ...defaultConfig.risk, stopTrigger: "close", riskReward: 6 },
     winRateProfile: winRate({ triggerWindow: 3, riskReward: 1.25, trailStartR: 1, trailDistanceR: 0.5 })
   }),
-  // holdout 2026: 135 trades, -0.208R per trade. Measured and did NOT hold.
-  // Win-rate profile, holdout 2026: 146 trades, 33.6% win, -0.028R. Neither profile held.
+  // SHIPPING #8 — the four-symbol TradingView comparison completed on 27 July 2026.
+  // Kohen Dive Adaptive replaces RSI Divergence Reversal and the temporary V4.6 comparison
+  // preset. Active 4H is the default; Strict 4H remains inside the generated Pine dropdown
+  // as an isolated signal-profile A/B option.
   preset({
-    presetId: "rsi_divergence_reversal", name: "RSI Divergence Reversal",
-    chartTimeframe: "30", entryTrigger: "trend_state",
+    presetId: "kohen_dive_adaptive", name: "Kohen Dive Adaptive",
+    researchProfile: "kohen_dive_adaptive_v1",
+    chartTimeframe: "240", entryTrigger: "trend_state",
     trend: { ...defaultConfig.trend, emaEnabled: false, vwapEnabled: false, longMaEnabled: false },
     higherTimeframe: { ...defaultConfig.higherTimeframe, enabled: false },
-    momentum: { ...defaultConfig.momentum, divergenceEnabled: true, rsiLong: 40, rsiShort: 60 },
+    momentum: {
+      ...defaultConfig.momentum,
+      rsiEnabled: true,
+      rsiLength: 14,
+      rsiLong: 40,
+      rsiShort: 60,
+      divergenceEnabled: true
+    },
     volume: { ...defaultConfig.volume, enabled: false },
-    risk: { ...defaultConfig.risk, riskReward: 6 },
-    winRateProfile: winRate({ riskReward: 3.5, trailStartR: 2, trailDistanceR: 1.5 })
+    risk: { ...defaultConfig.risk, atrLength: 14, atrMultiple: 1.75, riskReward: 1.75 },
+    execution: { ...defaultConfig.execution, cooldownBars: 2 }
   }),
   // LOCKED on its own structure, 2026-07-27. The previous settings were never measured: the
   // volume gate, the ADX gate and the long moving average had been hand-picked since the first

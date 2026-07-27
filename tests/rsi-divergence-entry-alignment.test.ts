@@ -11,7 +11,6 @@ const rsiPanePresetNames = [
   "Swing Structure Trend",
   "Spot Accumulation",
   "Breakout Momentum",
-  "RSI Divergence Reversal",
   "Selective Multi-Timeframe",
   "Long-Term Trend Guard"
 ] as const;

@@ -11,13 +11,14 @@ const indicator = (config: StrategyConfig) => compilePine(toPublicIndicatorConfi
 const countable = presets.filter(
   (preset) =>
     preset.direction !== "spot_buy_exit" &&
+    preset.researchProfile === undefined &&
     preset.risk.stopMode !== "none" &&
     preset.risk.takeProfitMode !== "none"
 );
 
 describe("outcome counter", () => {
   it("covers every preset that defines both a stop and a target", () => {
-    expect(countable).toHaveLength(9);
+    expect(countable).toHaveLength(8);
     expect(presets).toHaveLength(10);
   });
 
@@ -201,6 +202,7 @@ describe("exit management reaches the generated script", () => {
   const countable2 = presets.filter(
     (preset) =>
       preset.direction !== "spot_buy_exit" &&
+      preset.researchProfile === undefined &&
       preset.risk.stopMode !== "none" &&
       preset.risk.takeProfitMode !== "none"
   );

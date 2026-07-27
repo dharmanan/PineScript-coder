@@ -18,7 +18,6 @@ const MEASURED: Record<string, {
   swing_trend_4h: { timeframe: "30", signalMode: "all_filters", score: 60, window: 5, riskReward: 6, breakEven: 0, trailStart: 0, trailDistance: 1 },
   supertrend_volume: { timeframe: "30", signalMode: "all_filters", score: 60, window: 10, riskReward: 5, breakEven: 0, trailStart: 0, trailDistance: 1 },
   breakout_momentum: { timeframe: "60", signalMode: "all_filters", score: 60, window: 3, riskReward: 6, breakEven: 0, trailStart: 0, trailDistance: 1 },
-  rsi_divergence_reversal: { timeframe: "30", signalMode: "all_filters", score: 60, window: 1, riskReward: 6, breakEven: 0, trailStart: 0, trailDistance: 1 },
   selective_multi_timeframe: { timeframe: "60", signalMode: "all_filters", score: 60, window: 3, riskReward: 6, breakEven: 0, trailStart: 2, trailDistance: 1.5 },
   long_term_trend_guard: { timeframe: "30", signalMode: "all_filters", score: 60, window: 5, riskReward: 6, breakEven: 1, trailStart: 0, trailDistance: 1 }
 };
@@ -27,8 +26,10 @@ const byId = (id: string) => presets.find((preset) => preset.presetId === id) as
 
 describe("measured preset defaults", () => {
   it("covers every preset except the unmeasurable spot one", () => {
-    const measurable = presets.filter((preset) => preset.direction !== "spot_buy_exit");
-    expect(measurable).toHaveLength(9);
+    const measurable = presets.filter(
+      (preset) => preset.direction !== "spot_buy_exit" && preset.researchProfile === undefined
+    );
+    expect(measurable).toHaveLength(8);
     expect(Object.keys(MEASURED).sort()).toEqual(measurable.map((preset) => preset.presetId).sort());
   });
 

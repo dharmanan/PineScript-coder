@@ -10,7 +10,10 @@ export type EntryTrigger = "trend_state" | "ema_cross" | "pullback_reclaim" | "v
 export type SpotExitMode = "trend_break" | "ema_cross" | "rsi_overbought" | "htf_bearish" | "combined";
 export type VisualProfile = "clean" | "enhanced" | "advanced";
 export type SessionTimezone = "exchange" | "America/New_York" | "Europe/London" | "Europe/Istanbul" | "UTC";
-export type ResearchProfile = "bnb_30m_ema_confirmed_regular_divergence_v1";
+export type ResearchProfile =
+  | "bnb_30m_ema_confirmed_regular_divergence_v1"
+  | "kohen_dive_v4_6"
+  | "kohen_dive_adaptive_v1";
 
 // A preset ships with two measured settings. The money profile is what the preset already
 // carries; this is the alternative, which trades reward for hit rate. Only the fields a
@@ -38,6 +41,8 @@ export type PresetId =
   | "supertrend_volume"
   | "breakout_momentum"
   | "rsi_divergence_reversal"
+  | "kohen_dive"
+  | "kohen_dive_adaptive"
   | "selective_multi_timeframe"
   | "long_term_trend_guard";
 

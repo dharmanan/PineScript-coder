@@ -11,8 +11,10 @@ function compileValidatedBnb30m(config: StrategyConfig): string {
 
   const lines = [
     "//@version=6",
-    "// PineForge validated profile: BNBUSDT, 30-minute chart.",
-    "// Development: 2019-2022. Validation: 2023-2024. Final 2025+ holdout was not opened.",
+    "// PineForge historical research profile: BNBUSDT, 30-minute chart.",
+    "// Selected: 2019-2022. Validation: 2023-2024. Forward: 2025 and 2026 H1.",
+    "// Forward results stayed positive at normal costs, but 2025 failed the stress-cost case",
+    "// and later samples were small. This is not a universal validated default.",
     "// Commission 0.15% per side is used as a TradingView proxy for the research model's 0.10% commission plus 0.05% adverse slippage.",
     "// Review and test this script before using real capital.",
     declaration,

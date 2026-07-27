@@ -11,8 +11,20 @@ const styleLabels: Record<StrategyConfig["style"], string> = {
 };
 
 const VALIDATED_BNB_PROFILE = "bnb_30m_ema_confirmed_regular_divergence_v1";
+const KOHEN_DIVE_ADAPTIVE_PROFILE = "kohen_dive_adaptive_v1";
 
 export function explainConfig(c: StrategyConfig): string[] {
+  if (c.researchProfile === KOHEN_DIVE_ADAPTIVE_PROFILE) {
+    return [
+      "Kohen Dive Adaptive is a 4-hour pressure indicator that defaults to its Active 4H signal profile.",
+      "The pressure gradient, premium/discount map, rolling RSI divergence pressure and true rolling-low anchored VWAP remain intact, but a divergence no longer becomes a counter-trend entry by itself.",
+      "When EMA 20/50 structure, price and the anchored-VWAP slope identify a strong opposite regime, the reversal is gated until positive or negative pressure supplies state recovery after that regime weakens.",
+      "To increase useful frequency, Active 4H admits trend-aligned pullback continuation signals when RSI, EMA or pressure recovers; the original strict RSI-plus-pressure confirmation remains selectable in the generated indicator.",
+      "Automatic opposite-signal reversal is off by default, preventing an unproven counter-signal from cutting a healthy trade early. Confirmed signals enter at the next candle open with frozen ATR 14 × 1.75 risk and a 1.75R target.",
+      "The dashboard separates long/short and continuation/reversal wins and losses, and reports how many raw counter-trend reversals the adaptive gate withheld, alongside net R, profit factor and maximum drawdown."
+    ];
+  }
+
   if (c.researchProfile === VALIDATED_BNB_PROFILE) {
     const lines = [
       "This validated research profile is restricted to BINANCE:BNBUSDT on a 30-minute chart; signals are blocked on another symbol or timeframe.",
@@ -25,7 +37,7 @@ export function explainConfig(c: StrategyConfig): string[] {
       ? "Indicator mode plots the frozen stop and target as visual guidance; it does not submit Strategy Tester orders."
       : "Strategy Tester orders use the same frozen swing stop and 1.8:1 target as the indicator profile.");
     lines.push("TradingView alert conditions are included for validated long and short signals.");
-    lines.push("The profile was selected on 2019-2022 development data and passed 2023-2024 validation plus a higher-cost stress check; the 2025+ final holdout remains unopened.");
+    lines.push("The profile was selected on 2019-2022 development data and passed 2023-2024 validation plus its original higher-cost stress check. A later forward check stayed positive at normal costs in 2025 and 2026 H1, but 2025 failed the higher-cost stress case and the sample fell to 25 and 12 trades respectively; treat it as a narrow research profile, not a universal default.");
     return lines;
   }
 

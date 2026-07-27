@@ -9,11 +9,13 @@ import type { StrategyConfig } from "../lib/types";
 
 const indicator = (config: StrategyConfig) => compilePine(toPublicIndicatorConfig(config));
 
-const scored = presets.filter((preset) => preset.direction !== "spot_buy_exit");
+const scored = presets.filter(
+  (preset) => preset.direction !== "spot_buy_exit" && preset.researchProfile === undefined
+);
 
 describe("signal score", () => {
   it("applies to every non-spot preset", () => {
-    expect(scored).toHaveLength(9);
+    expect(scored).toHaveLength(8);
   });
 
   for (const preset of scored) {
@@ -122,13 +124,6 @@ describe("signal score", () => {
     expect(code).toContain("longScoreRaw = ");
     expect(code).not.toContain("shortScoreRaw = ");
     expect(code).toContain('"L " + str.tostring(longScore)');
-  });
-
-  it("weights the divergence preset on its divergence filter", () => {
-    const divergence = presets.find((preset) => preset.presetId === "rsi_divergence_reversal");
-    const code = indicator(divergence as StrategyConfig);
-    const scoreLine = code.split("\n").find((row) => row.startsWith("longScoreRaw = "));
-    expect(scoreLine).toContain("((bullishDivergence) ? 25 : 0)");
   });
 
   it("stays out of a spot preset", () => {

@@ -8,6 +8,7 @@ export type ContractIssue = {
 };
 
 const VALIDATED_BNB_PROFILE = "bnb_30m_ema_confirmed_regular_divergence_v1";
+const KOHEN_DIVE_ADAPTIVE_PROFILE = "kohen_dive_adaptive_v1";
 
 const claimsShortEntries = (text: string): boolean => {
   const sentences = text.split(/[.!?]+/).map((sentence) => sentence.trim()).filter(Boolean);
@@ -29,6 +30,26 @@ export function analyzeBehaviorContract(config: StrategyConfig, code: string, ex
   const text = explanation.join(" ").toLowerCase();
   const issues: ContractIssue[] = [];
   const error = (codeValue: string, message: string) => issues.push({ level: "error", code: codeValue, message });
+
+  if (config.researchProfile === KOHEN_DIVE_ADAPTIVE_PROFILE) {
+    const requiredExplanation = [
+      ["4-hour pressure indicator", "explanation.kohen_scope_missing"],
+      ["active 4h signal profile", "explanation.kohen_active_profile_missing"],
+      ["strong opposite regime", "explanation.kohen_regime_missing"],
+      ["state recovery", "explanation.kohen_confirmation_missing"],
+      ["trend-aligned pullback continuation signals", "explanation.kohen_continuation_missing"],
+      ["automatic opposite-signal reversal is off", "explanation.kohen_reverse_guard_missing"],
+      ["long/short and continuation/reversal", "explanation.kohen_split_metrics_missing"],
+      ["atr 14 × 1.75", "explanation.kohen_risk_missing"]
+    ] as const;
+    for (const [needle, issueCode] of requiredExplanation) {
+      if (!text.includes(needle)) error(issueCode, `Kohen Dive explanation is missing: ${needle}`);
+    }
+    if (!code.includes(`expectedChartTimeframe = input.timeframe("${config.chartTimeframe}"`)) {
+      error("code.kohen_timeframe_missing", "Kohen Dive must expose its measured chart timeframe.");
+    }
+    return issues;
+  }
 
   if (config.researchProfile === VALIDATED_BNB_PROFILE) {
     const requiredExplanation = [

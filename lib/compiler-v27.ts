@@ -76,20 +76,29 @@ export function compilePine(config: StrategyConfig): string {
   // indicator long before it reads as a wide reward target. The reviewed presets bear that out:
   // every one of the four locked so far has a win-rate profile clearing 49%, while their money
   // profiles sit between 12% and 25%.
-  code = insertSelector(code, config.activeProfile === "money" ? MONEY : WIN_RATE);
+  code = insertSelector(code, config.activeProfile === "money" ? MONEY : WIN_RATE, config);
   return withProfileRow(code, config);
 }
 
 // The selector has to be declared before the first field that reads it, and it belongs at
 // the top of the settings panel regardless, so it goes ahead of the first input in the file.
-function insertSelector(code: string, active: string): string {
+function insertSelector(code: string, active: string, config: StrategyConfig): string {
   const first = code.match(/^\w+ = input\.[^\n]*$/m);
   if (!first) throw new Error("Compiler transform anchor missing: first input declaration");
 
+  const reviewWarning = config.presetId === "rsi_divergence_reversal"
+    ? [
+        "// RESEARCH STATUS: experimental signal preset.",
+        "// Corrected cross-symbol tests found no 5m-4h structure/exit combination that",
+        "// stayed profitable on BTCUSDT, ETHUSDT, BNBUSDT and SOLUSDT together.",
+        "// Use the divergence marks as research; do not read this as a validated system."
+      ]
+    : [];
   const block = [
     "// === Profile ===",
     "// Both settings were measured on the same data. Money takes fewer, larger wins; Win",
     "// rate takes more, smaller ones. Custom leaves every input below under your control.",
+    ...reviewWarning,
     `profileMode = input.string("${active}", "Profile", options=["${MONEY}", "${WIN_RATE}", "${CUSTOM}"])`,
     "",
     first[0]

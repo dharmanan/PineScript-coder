@@ -1,6 +1,6 @@
 import {
   atr, crossover, crossunder, dmi, ema, fairValueGaps, highest, liquiditySweep, lowest, macd,
-  orderBlocks, pivotHigh, pivotLow, rsi, sma, structureBias, supertrend, valueWhenPrevious, vwap
+  orderBlocks, pivotHigh, pivotLow, rsi, sma, structureBias, supertrend, vwap
 } from "./indicators.mjs";
 
 const DAY = 86400000;
@@ -86,6 +86,80 @@ function sessionMask(candles, config) {
   });
 }
 
+// The generated Pine finds pivots in RSI, then samples price at those RSI pivot bars.
+// It does not require price itself to be a pivot. The prior sweep engine did require an
+// RSI pivot and a price pivot on the same bar, which removed roughly half the product's
+// divergence signals. Pine also accepts the previous RSI pivot only when its confirmation
+// is 5-60 bars back (`ta.barssince(pivotFound[1])`); keep those defaults here because they
+// are the inputs emitted by compiler-v14.
+export function confirmedRegularDivergence(
+  candles,
+  rsiValues,
+  pivotOrOptions,
+  legacyRangeMinimum = 5,
+  legacyRangeMaximum = 60
+) {
+  const options = typeof pivotOrOptions === "number"
+    ? {
+        left: pivotOrOptions,
+        right: pivotOrOptions,
+        rangeMinimum: legacyRangeMinimum,
+        rangeMaximum: legacyRangeMaximum
+      }
+    : pivotOrOptions;
+  const {
+    left,
+    right,
+    rangeMinimum = 5,
+    rangeMaximum = 60
+  } = options;
+  const rsiPivotLow = pivotLow(rsiValues, left, right);
+  const rsiPivotHigh = pivotHigh(rsiValues, left, right);
+  const bullish = new Array(candles.length).fill(false);
+  const bearish = new Array(candles.length).fill(false);
+  let previousLow = null;
+  let previousHigh = null;
+
+  for (let confirmation = 0; confirmation < candles.length; confirmation += 1) {
+    const pivotIndex = confirmation - right;
+    if (rsiPivotLow[confirmation] !== null) {
+      const current = {
+        confirmation,
+        rsi: rsiPivotLow[confirmation],
+        price: candles[pivotIndex].low
+      };
+      if (previousLow) {
+        const distance = confirmation - previousLow.confirmation - 1;
+        bullish[confirmation] =
+          distance >= rangeMinimum &&
+          distance <= rangeMaximum &&
+          current.rsi > previousLow.rsi &&
+          current.price < previousLow.price;
+      }
+      previousLow = current;
+    }
+
+    if (rsiPivotHigh[confirmation] !== null) {
+      const current = {
+        confirmation,
+        rsi: rsiPivotHigh[confirmation],
+        price: candles[pivotIndex].high
+      };
+      if (previousHigh) {
+        const distance = confirmation - previousHigh.confirmation - 1;
+        bearish[confirmation] =
+          distance >= rangeMinimum &&
+          distance <= rangeMaximum &&
+          current.rsi < previousHigh.rsi &&
+          current.price > previousHigh.price;
+      }
+      previousHigh = current;
+    }
+  }
+
+  return { bullish, bearish };
+}
+
 // Each plan filter id maps to exactly one predicate. An unmapped id throws rather
 // than silently dropping a condition the generated Pine would enforce.
 export function buildSeries(config, candles, { structural = false, swingLookback } = {}) {
@@ -124,17 +198,12 @@ export function buildSeries(config, candles, { structural = false, swingLookback
   }
   if (config.momentum.divergenceEnabled) {
     const pivot = config.momentum.divergencePivot;
-    const pricePivotLow = pivotLow(candles.map((candle) => candle.low), pivot, pivot);
-    const pricePivotHigh = pivotHigh(candles.map((candle) => candle.high), pivot, pivot);
-    const rsiPivotLow = pivotLow(series.rsi, pivot, pivot);
-    const rsiPivotHigh = pivotHigh(series.rsi, pivot, pivot);
-    series.divergence = {
-      pricePivotLow, pricePivotHigh, rsiPivotLow, rsiPivotHigh,
-      prevPriceLow: valueWhenPrevious(pricePivotLow),
-      prevPriceHigh: valueWhenPrevious(pricePivotHigh),
-      prevRsiLow: valueWhenPrevious(rsiPivotLow),
-      prevRsiHigh: valueWhenPrevious(rsiPivotHigh)
-    };
+    series.divergence = confirmedRegularDivergence(candles, series.rsi, {
+      left: config.momentum.divergencePivotLeft ?? pivot,
+      right: config.momentum.divergencePivotRight ?? pivot,
+      rangeMinimum: config.momentum.divergenceRangeMinimum ?? 5,
+      rangeMaximum: config.momentum.divergenceRangeMaximum ?? 60
+    });
   }
   if (config.higherTimeframe.enabled) series.htfBull = higherTimeframeBias(candles, config);
   if (config.execution.sessionEnabled) series.session = sessionMask(candles, config);
@@ -156,17 +225,7 @@ const FILTERS = {
     (long ? s.macd.line[i] > s.macd.signal[i] && s.macd.histogram[i] > 0 : s.macd.line[i] < s.macd.signal[i] && s.macd.histogram[i] < 0),
   adx: (s, i, long, c) => s.dmi.adx[i] !== null && s.dmi.plusDI[i] !== null && s.dmi.minusDI[i] !== null &&
     s.dmi.adx[i] >= c.momentum.adxThreshold && (long ? s.dmi.plusDI[i] > s.dmi.minusDI[i] : s.dmi.minusDI[i] > s.dmi.plusDI[i]),
-  divergence: (s, i, long) => {
-    const d = s.divergence;
-    if (long) {
-      return d.pricePivotLow[i] !== null && d.rsiPivotLow[i] !== null &&
-        d.prevPriceLow[i] !== null && d.prevRsiLow[i] !== null &&
-        d.pricePivotLow[i] < d.prevPriceLow[i] && d.rsiPivotLow[i] > d.prevRsiLow[i];
-    }
-    return d.pricePivotHigh[i] !== null && d.rsiPivotHigh[i] !== null &&
-      d.prevPriceHigh[i] !== null && d.prevRsiHigh[i] !== null &&
-      d.pricePivotHigh[i] > d.prevPriceHigh[i] && d.rsiPivotHigh[i] < d.prevRsiHigh[i];
-  },
+  divergence: (s, i, long) => long ? s.divergence.bullish[i] : s.divergence.bearish[i],
   volume: (s, i, long, c) => s.volumeAverage[i] !== null && s.candles[i].volume >= s.volumeAverage[i] * c.volume.multiplier,
   htf_bias: (s, i, long) => s.htfBull[i] !== null && (long ? s.htfBull[i] : !s.htfBull[i]),
   // Same role as htf_bias — decide which side is allowed — read from swing structure

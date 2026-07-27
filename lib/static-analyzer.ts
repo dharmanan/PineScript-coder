@@ -9,11 +9,52 @@ export type StaticIssue = {
 
 const contains = (code: string, value: string) => code.includes(value);
 const VALIDATED_BNB_PROFILE = "bnb_30m_ema_confirmed_regular_divergence_v1";
+const KOHEN_DIVE_PROFILE = "kohen_dive_v4_6";
+const KOHEN_DIVE_ADAPTIVE_PROFILE = "kohen_dive_adaptive_v1";
 
 export function analyzeGeneratedPine(config: StrategyConfig, code: string): StaticIssue[] {
   const issues: StaticIssue[] = [];
   const error = (codeValue: string, message: string) => issues.push({ level: "error", code: codeValue, message });
   const warn = (codeValue: string, message: string) => issues.push({ level: "warning", code: codeValue, message });
+
+  if (config.researchProfile === KOHEN_DIVE_PROFILE || config.researchProfile === KOHEN_DIVE_ADAPTIVE_PROFILE) {
+    const required = [
+      ["indicator(", "kohen.output_missing"],
+      ["trendScore = positiveCount - negativeCount", "kohen.pressure_missing"],
+      ["anchorBarsBack = math.abs(ta.lowestbars(low, vwapAnchorLookback))", "kohen.anchor_missing"],
+      ["anchoredVwap = anchoredVolume > 0", "kohen.vwap_missing"],
+      ["rollingDivBuy =", "kohen.long_divergence_missing"],
+      ["rollingDivSell =", "kohen.short_divergence_missing"],
+      ["confirmationOk = not confirmedOnly or barstate.isconfirmed", "kohen.confirmation_missing"],
+      ["longFillPrice = entryUsesLimit ? math.min(open, pendingLimit) : open", "kohen.next_open_missing"],
+      ["pendingRisk := atrValue * atrMultiple", "kohen.frozen_risk_missing"],
+      ['"Win rate (net)"', "kohen.win_rate_missing"],
+      ['"Profit factor"', "kohen.profit_factor_missing"],
+      ['"Max drawdown"', "kohen.drawdown_missing"],
+      ["force_overlay=true", "kohen.overlay_routing_missing"]
+    ] as const;
+    for (const [needle, issueCode] of required) {
+      if (!contains(code, needle)) error(issueCode, `Kohen Dive is missing required behavior: ${needle}`);
+    }
+    if (config.researchProfile === KOHEN_DIVE_ADAPTIVE_PROFILE) {
+      const adaptiveRequired = [
+        ["strongBullRegime =", "kohen.adaptive_bull_regime_missing"],
+        ["strongBearRegime =", "kohen.adaptive_bear_regime_missing"],
+        ["longReversalTrigger =", "kohen.adaptive_reversal_confirmation_missing"],
+        ["longContinuationTrigger =", "kohen.adaptive_continuation_missing"],
+        ["reverseOnOppositeSignal and", "kohen.adaptive_reversal_exit_guard_missing"],
+        ['"Continuation W / L"', "kohen.adaptive_family_metrics_missing"],
+        ['"Raw reversals gated"', "kohen.adaptive_gate_metric_missing"]
+      ] as const;
+      for (const [needle, issueCode] of adaptiveRequired) {
+        if (!contains(code, needle)) error(issueCode, `Kohen Dive Adaptive is missing required behavior: ${needle}`);
+      }
+    }
+    if (config.execution.alertsEnabled && !contains(code, "alertcondition(acceptedLongSignal")) {
+      error("alerts.missing", "Kohen Dive alerts are enabled but were not generated.");
+    }
+    return issues;
+  }
 
   if (config.researchProfile === VALIDATED_BNB_PROFILE) {
     if (!code.startsWith("//@version=6")) error("pine.version", "Generated code must start with Pine Script version 6.");

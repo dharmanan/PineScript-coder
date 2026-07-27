@@ -23,10 +23,11 @@ describe("profile selector", () => {
     const measurable = presets.filter(
       (preset) =>
         preset.direction !== "spot_buy_exit" &&
+        preset.researchProfile === undefined &&
         preset.risk.stopMode !== "none" &&
         preset.risk.takeProfitMode !== "none"
     );
-    expect(withProfile).toHaveLength(9);
+    expect(withProfile).toHaveLength(8);
     expect(withProfile.map((preset) => preset.presetId).sort()).toEqual(
       measurable.map((preset) => preset.presetId).sort()
     );
