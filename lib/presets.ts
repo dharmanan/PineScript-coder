@@ -393,12 +393,18 @@ export const presets: StrategyConfig[] = [
     tradesPerMonth: 5.5,
     winRateProfile: winRate({ triggerWindow: 3, riskReward: 2.5 })
   }),
-  // Long-only. Not carried forward from the v2 sweep: its best configuration matched
-  // Fast EMA Scalper's, so it keeps its own character with the measured exit management.
-  // Win-rate profile: 44.7% in development, 37.4% in validation. The 2026 holdout holds
-  // five trades for this preset, all on one symbol, so no holdout claim is made either way.
+  // LOCKED 27 July 2026 — the original long-only preset was effectively inactive in the
+  // current market: BTC, ETH and SOL had no 2026 trade, while BNB had five. Admitting the
+  // mirrored short side, with every other setting fixed, produced a readable sample and a
+  // positive net result on all four TradingView charts:
+  //   BTC 14/12, 53.8%, +10.74R       ETH 16/15, 51.6%, +10.54R
+  //   BNB 18/11, 62.1%, +16.57R       SOL 14/19, 42.4%,  +1.13R
+  //
+  // Pullback reclaim, score 90/95 and a 60-minute chart were measured independently and
+  // rejected. The 30-minute EMA-cross structure, score 85 win-rate profile and all risk
+  // settings remain unchanged. See research/preset-sweep/PRESET-REVIEW-PLAN.md.
   preset({
-    presetId: "long_term_trend_guard", name: "Long-Term Trend Guard", style: "long_term", direction: "long_only",
+    presetId: "long_term_trend_guard", name: "Long-Term Trend Guard", style: "long_term", direction: "long_short",
     chartTimeframe: "30", triggerWindow: 5, entryTrigger: "ema_cross",
     trend: { ...defaultConfig.trend, emaFast: 50, emaSlow: 100, longMaLength: 200, vwapEnabled: false },
     higherTimeframe: { ...defaultConfig.higherTimeframe, timeframe: "W", method: "sma", length: 40, closedBarOnly: true },

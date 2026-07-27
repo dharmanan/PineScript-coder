@@ -118,9 +118,8 @@ describe("signal score", () => {
   });
 
   it("does not score a short side in a long-only preset", () => {
-    const longOnly = presets.find((preset) => preset.presetId === "long_term_trend_guard");
-    expect(longOnly?.direction).toBe("long_only");
-    const code = indicator(longOnly as StrategyConfig);
+    const longOnly: StrategyConfig = { ...defaultConfig, direction: "long_only" };
+    const code = indicator(longOnly);
     expect(code).toContain("longScoreRaw = ");
     expect(code).not.toContain("shortScoreRaw = ");
     expect(code).toContain('"L " + str.tostring(longScore)');

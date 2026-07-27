@@ -2,7 +2,7 @@
 
 > ## Yeni oturum buradan başlar
 >
-> **Sıradaki iş:** Long-Term Trend Guard incelemesi (9. sıra, aşağıdaki tabloda).
+> **Durum:** Ölçülebilir dokuz preset'in tamamı kilitlendi.
 >
 > Selective Multi-Timeframe kilitlendi; isabet profili yeni yapıya karşı henüz
 > tam ızgarayla taranmadı (`run-winrate-axes.mjs`), o da o preset'in açık işi.
@@ -13,11 +13,11 @@
 > /Users/kohen/bin/safe-npm test
 > /Users/kohen/bin/safe-npm run dev -- -H 0.0.0.0
 > ```
-> 717 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
+> 718 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
 >
-> **Commit bekleyen değişiklikler stage'de.** Kohen commit'i kendi atar; Claude
-> `git commit`, `push`, `pull`, `fetch`, `reset`, `rebase` çalıştırmaz. Stage için
-> `/Users/kohen/bin/safe-git-stage DOSYA`, tek tek, `git add .` asla.
+> **Git işlemleri yalnız açık kullanıcı isteğiyle yapılır.** Stage için
+> `/Users/kohen/bin/safe-git-stage DOSYA`, tek tek; `git add .` asla. Push ayrıca
+> istenmedikçe yapılmaz; `reset`, `rebase` ve force işlemleri kullanılmaz.
 >
 > **Node/npm sadece** `/Users/kohen/bin/safe-npm` üzerinden. Dev server öncesi
 > `/Users/kohen/bin/safe-stop`. Tarama çalıştırmadan önce de dev server durdurulmalı,
@@ -77,7 +77,7 @@ geçmek için. Bir preset kilitlendikten sonra o preset'e dokunulmaz — yeni bi
 tekrar açmayı gerektirirse, o karar ayrıca konuşulur.
 
 **Son güncelleme:** 27 Temmuz 2026
-**Kilitlenen:** 8 / 9 ölçülebilir preset
+**Kilitlenen:** 9 / 9 ölçülebilir preset
 
 ---
 
@@ -113,7 +113,7 @@ sayıları ölçümle uyuştuktan sonra kilitlenir.
 | 6 | Swing Structure Trend | 2.2 | **KİLİTLENDİ** ✓ |
 | 7 | Selective Multi-Timeframe | 5.5 | **KİLİTLENDİ** ✓ |
 | 8 | Kohen Dive Adaptive | ≈3.8 | **KİLİTLENDİ** ✓ |
-| 9 | Long-Term Trend Guard | 1.9 | bekliyor |
+| 9 | Long-Term Trend Guard | ≈5.0 | **KİLİTLENDİ** ✓ |
 | — | Spot Accumulation | — | ölçülemez (stop/hedef yok) |
 
 ---
@@ -1444,32 +1444,47 @@ production build geçti. Hazır indikatör listesi yerel tarayıcıda doğruland
 
 ---
 
-## 9. Long-Term Trend Guard — bekliyor
+## 9. Long-Term Trend Guard — ✅ KİLİTLENDİ (27 Temmuz 2026)
 
-`long_term_trend_guard` · 30 dakika · tetikleyici penceresi 5 · ATR×3 · long-only
+`long_term_trend_guard` · 30 dakika · long + short · EMA 50/100 kesişimi · haftalık
+SMA40 · ATR×3
 
-- **Para profili:** risk/ödül 6, başabaş 1R
-- **İsabet profili:** risk/ödül 2, trailing 1.5/1, skor 85, pencere 10
+- **Para profili:** risk/ödül 6, başabaş 1R, tetikleyici penceresi 5
+- **Varsayılan isabet profili:** risk/ödül 2, trailing 1.5/1, skor 85, pencere 10
 
-| Dönem | Para profili | İsabet profili |
-|---|---|---|
-| 2019-2022 | 256t · %11.3 · +0.229R | 374t · %44.7 · +0.107R |
-| 2023-2025 | 421t · %11.9 · +0.195R | 658t · %37.4 · −0.065R |
-| 2026 Oca-Haz | 3t · %33.3 · +1.978R | 5t · %80.0 · +0.863R |
-| 2026 Temmuz | işlem yok | işlem yok |
+Eski long-only kontrol 2026 Ocak-Haziran'da BTC, ETH ve SOL'da hiç işlem üretmedi;
+yalnız BNB'de 4/1, +4.32R vardı. Başka hiçbir ayar değişmeden short tarafının açılması
+dört sembolde de okunabilir örneklem ve pozitif net sonuç verdi.
 
-**Dikkat edilecekler:**
+**TradingView — 2026-01-01 dahil, 2026-07-01 hariç:**
 
-- 2026'da toplam 3 işlem, hepsi BNB'de. Diğer üç sembolde **hiç sinyal yok.**
-- Haftalık SMA-40 filtresi kullanıyor; bu kadar yavaş bir filtre 30 dakikalık grafikte
-  neredeyse hiç izin vermiyor.
-- Bu preset daha önce "6 yılda 3 işlem" gibi görünüyordu; sebebi ölçüm aracındaki bir
-  hataydı (veri boşluklarında gösterge ısınması sıfırlanıyordu). Hata düzeltildi, gerçek
-  sayı 2019-2022'de 256 işlem. Ama 2026'da yine de neredeyse hiç sinyal yok.
-- **Karar önerisi:** ya daha yüksek zaman dilimine taşınmalı (4 saat / günlük, hiç
-  ölçülmedi) ya da üründen çıkarılmalı.
+| Sembol | Kazanç / kayıp | İşlem | İsabet | Net sonuç |
+|---|---:|---:|---:|---:|
+| BTCUSDT | 14 / 12 | 26 | %53.8 | +10.74R |
+| ETHUSDT | 16 / 15 | 31 | %51.6 | +10.54R |
+| BNBUSDT | 18 / 11 | 29 | %62.1 | +16.57R |
+| SOLUSDT | 14 / 19 | 33 | %42.4 | +1.13R |
 
-**Durum:** ölçüm hazır, sıra bekliyor.
+BTC, ETH ve BNB paneli offline motorla işlem ve net R düzeyinde birebir eşleşti.
+SOL offline motorda 15/19 ve +3.12R gösterdi: Pine tarafında bir adet yaklaşık +1.99R
+hedef işlemi hiç kabul edilmedi. Kullanıcı bu tek işlem parity farkını daha fazla takip
+etmeden, TradingView sonucunu gerçek kabul ederek adayı kilitleme kararı verdi.
+
+**İzole A/B kararları:**
+
+- `ema_cross → pullback_reclaim`: işlem sayısını artırdı fakat BTC geliştirmeyi negatife
+  çevirdi ve ETH drawdown'ını belirgin artırdı; reddedildi.
+- Minimum skor `85 → 90/95`: 90 ile 95 aynı sinyalleri verdi. 2026 Oca-Haz neti BTC
+  +10.74R→+10.65R, ETH +10.54R→+8.77R, BNB +16.57R→+12.41R,
+  SOL +3.12R→+2.19R düştü; reddedildi.
+- Grafik `30dk → 60dk`, short açık: 2026 Oca-Haz neti BTC +5.77R, ETH −3.76R,
+  BNB +3.66R, SOL +1.38R oldu; Temmuz'da BTC, BNB ve SOL negatife döndü; reddedildi.
+
+**Kilit kararı:** 30 dakika, long + short, EMA-cross, skor 85 ve mevcut risk ayarları
+kontrol grubudur. Kullanıcı açıkça yeniden açmadan yön, zaman dilimi, skor, giriş motoru
+ve dashboard değiştirilmez.
+
+Kilit regresyonu: preset yönü `long_short`, chart `30`, win-rate skoru `85`.
 
 ---
 

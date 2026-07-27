@@ -80,4 +80,11 @@ describe("measured preset defaults", () => {
     expect(spot.signalMode).toBe("all_filters");
     expect(spot.risk.stopMode).toBe("none");
   });
+
+  it("keeps the locked Long-Term Trend Guard direction and win-rate score", () => {
+    const preset = byId("long_term_trend_guard");
+    expect(preset.direction).toBe("long_short");
+    expect(preset.chartTimeframe).toBe("30");
+    expect(preset.winRateProfile?.scoreThreshold).toBe(85);
+  });
 });
