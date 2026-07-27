@@ -2,7 +2,7 @@
 
 > ## Yeni oturum buradan başlar
 >
-> **Sıradaki iş:** 4H Swing Trend incelemesi (6. sıra, aşağıdaki tabloda).
+> **Sıradaki iş:** Selective Multi-Timeframe incelemesi (7. sıra, aşağıdaki tabloda).
 >
 > **İlk üç komut:**
 > ```
@@ -10,7 +10,7 @@
 > /Users/kohen/bin/safe-npm test
 > /Users/kohen/bin/safe-npm run dev -- -H 0.0.0.0
 > ```
-> 742 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
+> 749 test geçmeli. Doğrulama Browser pane ile yapılır, `curl` yasak.
 >
 > **Commit bekleyen değişiklikler stage'de.** Kohen commit'i kendi atar; Claude
 > `git commit`, `push`, `pull`, `fetch`, `reset`, `rebase` çalıştırmaz. Stage için
@@ -69,8 +69,8 @@ On indikatörü tek tek ele alıp, gerçek grafikte doğruladıktan sonra kilitl
 geçmek için. Bir preset kilitlendikten sonra o preset'e dokunulmaz — yeni bir ölçüm onu
 tekrar açmayı gerektirirse, o karar ayrıca konuşulur.
 
-**Son güncelleme:** 26 Temmuz 2026
-**Kilitlenen:** 5 / 9 ölçülebilir preset
+**Son güncelleme:** 27 Temmuz 2026
+**Kilitlenen:** 6 / 9 ölçülebilir preset
 
 ---
 
@@ -103,8 +103,8 @@ sayıları ölçümle uyuştuktan sonra kilitlenir.
 | 3 | Supertrend Volume | 10.5 | **KİLİTLENDİ** ✓ |
 | 4 | Breakout Momentum | 6.6 | **KİLİTLENDİ** ✓ |
 | 5 | VWAP Reclaim | 7.1 | **KİLİTLENDİ** ✓ |
-| 6 | 4H Swing Trend | 2.2 | **SIRADA** |
-| 7 | Selective Multi-Timeframe | 2.1 | bekliyor |
+| 6 | Swing Structure Trend | 2.2 | **KİLİTLENDİ** ✓ |
+| 7 | Selective Multi-Timeframe | 2.1 | **SIRADA** |
 | 8 | RSI Divergence Reversal | 5.3 | bekliyor |
 | 9 | Long-Term Trend Guard | 1.9 | bekliyor |
 | — | Spot Accumulation | — | ölçülemez (stop/hedef yok) |
@@ -795,12 +795,156 @@ bölümde.
 
 ---
 
-## 6. 4H Swing Trend — bekliyor
+## 6. Swing Structure Trend — ✅ KİLİTLENDİ (27 Temmuz 2026)
 
-`swing_trend_4h` · 30 dakika · tetikleyici penceresi 5 · ATR×2.5 · **yapısal bias**
+*Eski adı: 4H Swing Trend. `presetId` değişmedi (`swing_trend_4h`).*
+
+`swing_trend_4h` · 30 dakika · pencere 5 · ATR×2.5 · yapısal bias · **SMA-200 kapalı** · **üst zaman dilimi kapalı**
+
+- **Para profili:** risk/ödül 6 — *değişmedi*
+- **İsabet profili:** risk/ödül **1.25**, trailing **1R/0.5R** — *değişti*
+- **Sıklık ürün metninde:** ayda ~2.2 sinyal/sembol
+
+### "Neden bu kadar az işlem" sorusu ölçüldü
+
+Her filtre tek tek kapatıldı — bu eksen daha önce hiçbir preset'te yapılmamıştı:
+
+| Kapatılan | İşlem (dev) | holdout | Sonuç |
+|---|---|---|---|
+| **SMA-200** | 366 *(364)* | +0.313R *(+0.336)* | **Hiçbir şey yapmıyor** |
+| EMA trendi | 697 *(2 kat)* | **+0.005R** | Edge sıfırlanıyor |
+| ADX | 965 *(2.6 kat)* | **−0.010R** | Edge sıfırlanıyor |
+| Hacim | 449 | +0.168R | Yarıya düşüyor |
+| RSI | 465 | +0.113R | Üçte birine düşüyor |
+
+**Cevap:** işlem sayısı az çünkü filtreler gerçekten iş yapıyor. Herhangi birini kaldırınca
+işlem artıyor, edge gidiyor. Az işlem bu preset'in **bedeli**, kazası değil.
+
+Tek istisna SMA-200: swing yapısı bias'ı ve EMA 50/100 zaten aynı bilgiyi veriyor, üçüncü bir
+yön filtresi hiçbir şeyi veto etmiyor. Kaldırıldı — bedava sadeleştirme, ama işlem sayısını da
+artırmıyor.
+
+İşlem sayısını artırmayı deneyen her yol ölçüldü ve reddedildi: pivot 5 + EMA 20/50 (1126 işlem,
+holdout **−0.192R**), pivot 5 + ADX 15 (791 işlem, −0.076R), SMA-200 kapalı + EMA 20/50
+(1261 işlem, −0.030R). Üçe katlanabiliyor, her seferinde edge yok oluyor.
+
+### İsabet profili: burada bir hata yaptım ve düzelttim
+
+Profil, adı *"Win rate — more, smaller wins"* olmasına rağmen **%27.9** isabet veriyordu.
+Kohen bunu grafikte gördü: BTC'de %15.
+
+Ölçümde çözümü vardı ve ben **yanlış ölçütle** elemiştim:
+
+| | İsabet | Beklenti (holdout) |
+|---|---|---|
+| rr 3, trailing yok (eski) | %27.9 | +0.100R |
+| **rr 1.25 + trail 1R/0.5R** | **%53.1** | +0.084R |
+
+İsabeti "beklentisi düşük" diye reddetmiştim. Ama **isabet profilinin işi isabet** — beklenti
+için zaten rr 6'lık para profili var. Ölçüt hatası. Kayda geçiyor ki tekrarlanmasın.
+
+### Grafikte doğrulama (2026 Ocak–Temmuz)
+
+| Sembol | Panel |
+|---|---|
+| BTC | 21t · %38.1 · **−5.38R** |
+| ETH | 21t · **%61.9** · +4.20R |
+| BNB | 16t · %43.8 · −1.20R |
+| SOL | 14t · **%57.1** · +2.65R |
+| **Toplam** | **72t · %50.0 · +0.27R** |
+
+Ölçümün holdout+Temmuz tahmini **72 işlem, %50.0 isabet** — işlem sayısı ve isabet **birebir**.
+
+### Kilitlendi ama iki uyarıyla
+
+**1. İsabetini tutuyor, para kazanmıyor.** 72 işlemde +0.27R. Ocak–Haziran +5.4R'ydi, Temmuz'un
+sekiz işlemi −4.4R'sini geri aldı. Kilitli setin en ince edge'i, ve ETH ile SOL taşıyor.
+
+**2. Doğrulanamıyor.** Sembol başına 16-21 işlem, yedi ayda. Bu örneklem "edge var mı" sorusunu
+çözmez. Grafik okuması **ölçüm aracının ürünle uyuştuğunu** doğruladı, **ürünün çalıştığını**
+değil. İkisi farklı şeyler ve bu preset'te sadece birincisi elimizde.
+
+### Seyreklik artık ürün metninde
+
+`tradesPerMonth` alanı eklendi ve `lib/explain.ts` şunu yazıyor:
+
+> *"Expect roughly 2.2 signals per symbol per month. This is a sparse preset: quiet stretches of
+> a week or more are normal and are not a fault."*
+
+Alan **isteğe bağlı** ve sadece ölçülmüş yerde dolduruluyor. Eski bir sayı yazmak hiç yazmamaktan
+kötü olurdu: yirmi sinyal bekleyip iki tane alan kullanıcıyı piyasa değil ürün yanıltmış olur.
+Kalan preset'lere incelendikçe eklenecek. 4'ün altındaki değerlerde "sessiz haftalar normaldir"
+cümlesi ayrıca çıkıyor.
+
+### İsim değişti, ve isim kontrolü bir hata ortaya çıkardı
+
+**4H Swing Trend → Swing Structure Trend.** Grafik **30 dakika**, yön kararı grafiğin kendi
+3-barlık pivotlarından geliyor. Hiçbir yerde 4 saat yoktu. Yeni isim preset'i benzersiz yapan
+kapıyı söylüyor: setteki tek swing yapısı preset'i.
+
+İsmi kontrol ederken üretilen script'e bakıldı ve **iki ölü parça** bulundu.
+
+**1. Üst zaman dilimi girdisi hiçbir şey yapmıyordu.** Script'te duruyordu:
+
+```
+htf     = input.timeframe("D", "Higher timeframe")
+htfBull = request.security(..., close[1] > ta.ema(close, 200)[1], ...)
+```
+
+Ama sinyal satırında yoktu:
+
+```
+longSetup = emaFast > emaSlow and rsiValue >= ... and adxValue >= ... and structureBull and ...
+```
+
+Swing yapısı üst zaman dilimini **değiştiriyor** — bu kasıtlı ve doğru. Ama input kalmıştı,
+kullanıcı değiştirdiğinde hiçbir şey olmuyordu. Kaldırıldı.
+
+VWAP Reclaim'de seans filtresini **tutmuştuk**, burada kaldırıldı. Fark: seansı kullanıcı
+açabilirdi. Burada açılacak bir şey yok, çünkü swing yapısı seçiliyken üst zaman dilimi tanım
+gereği devre dışı. Çalışmayan bir düğme bırakmak, kullanıcıya olmayan bir kontrol vaat etmek.
+
+**2. Grafik arka planı yanlış kaynağı gösteriyordu.** Bu bir hataydı:
+
+```
+bgcolor(... htfBull ? lime : red ..., title="Trend ribbon")
+```
+
+Arka plan, sinyalleri **hiç etkilemeyen** günlük EMA-200'e göre boyanıyordu. Yani kullanıcı
+kırmızı arka planda long sinyali görebiliyordu, ve dashboard'daki `Structure` satırı aynı anda
+`BULL` diyordu. Kohen'in grafik ekran görüntülerinde bu çelişki görünüyor.
+
+`compiler-v3` düzeltildi: `biasSource` swing yapısıysa ribbon `structureBull`'a bakıyor.
+Sadece bu preset'i etkiliyor, diğer sekizinde ribbon aynen eskisi gibi.
+
+### Ölçüm etkilenmedi — iddia değil, ölçüm
+
+İsim, arka plan ve üst zaman dilimi değişikliklerinden **önce ve sonra**, dört dönem:
+
+| | Önce | Sonra |
+|---|---|---|
+| 2019-22 | 366t · %22.4 · +0.486R | 366t · %22.4 · +0.486R |
+| 2023-25 | 341t · %18.2 · +0.211R | 341t · %18.2 · +0.211R |
+| holdout | 58t · %19.0 · +0.313R | 58t · %19.0 · +0.313R |
+| Temmuz | 8t · %12.5 · −0.145R | 8t · %12.5 · −0.145R |
+
+Birebir aynı. Sebebi: motor `higherTimeframe`'i sadece `htf_bias` filtresi için kullanıyor ve
+swing yapısı seçiliyken o filtre plana hiç girmiyor; arka plan rengi motorda zaten yok.
+
+### Kilit nasıl korunuyor
+
+`tests/profile-selector.test.ts` — `locked presets` iki profili, ayrı bir test de SMA-200'ün
+kapalı olduğunu, `tradesPerMonth`'un 2.2 olduğunu ve ürün metninde seyrekliğin yazdığını
+sabitliyor.
+
+---
+
+## Eski ölçüm kaydı — 4H Swing Trend, şimdi Swing Structure Trend (kilitleme öncesi)
+
+`swing_trend_4h` · 30 dakika · tetikleyici penceresi 5 · ATR×2.5 · **yapısal bias** · SMA-200 açık
 
 - **Para profili:** risk/ödül 6
-- **İsabet profili:** risk/ödül 3, pencere 5
+- **Eski isabet profili:** risk/ödül 3, pencere 5
 
 | Dönem | Para profili | İsabet profili |
 |---|---|---|

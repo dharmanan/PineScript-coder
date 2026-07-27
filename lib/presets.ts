@@ -136,15 +136,62 @@ export const presets: StrategyConfig[] = [
   // money on the 2026 holdout (-0.141R, negative on three of four symbols). So this
   // preset's alternative stops at rr 3 — 32.9% development, 29.2% validation, +0.052R
   // holdout — which is still a large step up in hit rate and still positive out of sample.
+  // LOCKED 27 July 2026 — two changes: the SMA-200 filter is switched off, and the win-rate
+  // profile moves to reward 1.25 with a 1R/0.5R trail. Read on all four symbols in TradingView:
+  // 72 trades, 50.0% win, +0.27R, against a measurement of 72 trades and 50.0%.
+  // See research/preset-sweep/PRESET-REVIEW-PLAN.md
+  //
+  // Locked with a caveat that belongs on the label rather than buried: it hits its win rate and
+  // makes almost no money. Over January to July 2026 the four symbols together produced +0.27R
+  // across 72 trades, with BTC at -5.38R and BNB at -1.20R. January to June was +5.4R and July's
+  // eight trades took -4.4R of it back. This is the thinnest edge in the locked set and it is
+  // carried by ETH and SOL.
+  //
+  // It is also the preset that can least be verified. Sixteen to twenty-one trades per symbol
+  // over seven months is not a sample that can settle whether an edge exists; the chart reading
+  // confirms the measurement machinery agrees with the product, not that the product works.
+  //
+  // The win-rate profile was shipping at 27.9% on the holdout, which Kohen saw on the chart as
+  // 15% on BTC. A profile labelled "more, smaller wins" cannot deliver a 27% hit rate. Reward
+  // 1.25 with a tight trail gives 53.1% on the same data for 0.016R less expectancy — the trade
+  // is obviously worth making, and it was rejected here at first only because the candidates
+  // were ranked on expectancy, which is the money profile's job rather than this one's.
+  //
+  // Every filter this preset carries was switched off one at a time to see which were earning
+  // their keep. Four of them are: removing the EMA trend doubles the trade count and drops the
+  // holdout to +0.005R, removing ADX multiplies it by 2.6 and gives -0.010R, and removing the
+  // volume or RSI gate halves the holdout. The low trade count is the price of the edge rather
+  // than an accident, which is the answer to why this preset only trades twice a month.
+  //
+  // The SMA-200 is the exception and the only change here: switching it off moves 364 trades to
+  // 366 and the holdout from +0.336R to +0.313R. It is not filtering anything, because the swing
+  // structure gate and the EMA 50/100 trend already answer the same question. A filter that
+  // vetoes nothing is a line in the settings panel that the reader has to think about for no
+  // reason.
+  //
+  // Also measured and rejected, all of them raising the trade count and losing the edge for it:
+  // swing pivot 5 (the only axis that gave all four symbols a readable sample, but better only
+  // on the holdout, which is the one partition selection may not use), pivot 2 and 8, EMA 20/50
+  // and 9/21, ADX 15, volume 0.8 through 2, ATR 1.5 through 3, and a 4-hour chart — that last
+  // one shows +1.112R in development, the largest number in the table, on six holdout trades.
   preset({
-    presetId: "swing_trend_4h", name: "4H Swing Trend", style: "swing",
+    presetId: "swing_trend_4h", name: "Swing Structure Trend", style: "swing",
     chartTimeframe: "30", triggerWindow: 5, entryTrigger: "pullback_reclaim",
     biasSource: "swing_structure",
-    trend: { ...defaultConfig.trend, emaFast: 50, emaSlow: 100, longMaLength: 200, vwapEnabled: false },
-    higherTimeframe: { ...defaultConfig.higherTimeframe, timeframe: "D", length: 200 },
+    // The sparsest preset in the set, and the number is stated because it cannot be fixed:
+    // every filter that could be loosened to raise it was measured, and each one multiplies the
+    // trade count while taking the holdout to zero or below.
+    tradesPerMonth: 2.2,
+    trend: { ...defaultConfig.trend, emaFast: 50, emaSlow: 100, longMaEnabled: false, vwapEnabled: false },
+    // Switched off because the swing-structure gate replaces it. It was still compiling a daily
+    // EMA-200 input and a request.security call that no signal condition read, so the settings
+    // panel offered a control that did nothing. Unlike the session filter on VWAP Reclaim, there
+    // is nothing here for a user to turn back on: while the bias comes from structure, a
+    // higher-timeframe gate is inert by definition.
+    higherTimeframe: { ...defaultConfig.higherTimeframe, enabled: false },
     momentum: { ...defaultConfig.momentum, adxEnabled: true, adxThreshold: 22 },
     risk: { ...defaultConfig.risk, atrMultiple: 2.5, riskReward: 6 },
-    winRateProfile: winRate({ triggerWindow: 5, riskReward: 3, trailStartR: 0, trailDistanceR: 1 })
+    winRateProfile: winRate({ triggerWindow: 5, riskReward: 1.25, trailStartR: 1, trailDistanceR: 0.5 })
   }),
   // No stop and no target, so a win and a loss are not defined. Never measured.
   preset({

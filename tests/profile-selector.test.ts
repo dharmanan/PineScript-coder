@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compilePine } from "../lib/compiler";
 import { presets } from "../lib/presets";
+import { explainConfig } from "../lib/explain";
 import { defaultConfig } from "../lib/defaults";
 import { toPublicIndicatorConfig } from "../lib/public-indicator-config";
 import type { StrategyConfig } from "../lib/types";
@@ -190,6 +191,17 @@ describe("profile selector", () => {
           signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 3,
           riskReward: 4, breakEvenAtR: 0, trailStartR: 1, trailDistanceR: 0.5
         }
+      },
+      // The win-rate profile was shipping at 27.9% here, which is not a win-rate profile. Reward
+      // 1.25 with a tight trail doubles that to 53.1% for 0.016R of expectancy. The first attempt
+      // at this review rejected the change by ranking candidates on expectancy, which is the money
+      // profile's job — this line exists so that mistake cannot be repeated silently.
+      swing_trend_4h: {
+        money: { riskReward: 6, breakEvenAtR: 0, trailStartR: 0 },
+        winRate: {
+          signalMode: "all_filters", scoreThreshold: 60, triggerWindow: 5,
+          riskReward: 1.25, breakEvenAtR: 0, trailStartR: 1, trailDistanceR: 0.5
+        }
       }
     };
 
@@ -249,6 +261,22 @@ describe("profile selector", () => {
       expect(code).toContain('volumeMultiplier = input.float(1.5,');
       // The plain-language text must not call an open window a restriction.
       expect(code).not.toContain("0930-1600");
+    });
+
+    // 4H Swing Trend's review found its SMA-200 was vetoing nothing — switching it off moved 364
+    // trades to 366 — while every other filter was load-bearing. And at 2.2 trades per symbol per
+    // month it is the sparsest preset in the set, which the product states rather than leaving a
+    // reader to conclude from a quiet chart that the indicator is broken.
+    it("keeps 4H Swing Trend's redundant filter off and its sparseness declared", () => {
+      const preset = presets.find((item) => item.presetId === "swing_trend_4h") as StrategyConfig;
+      expect(preset.trend.longMaEnabled).toBe(false);
+      expect(preset.tradesPerMonth).toBe(2.2);
+
+      const explanation = explainConfig(preset).join(" ");
+      expect(explanation).toContain("2.2 signals per symbol per month");
+      expect(explanation).toContain("sparse preset");
+      // The filter list must not advertise a gate the script no longer applies.
+      expect(explanation).not.toContain("SMA 200");
     });
   });
 

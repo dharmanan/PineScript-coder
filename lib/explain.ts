@@ -35,6 +35,14 @@ export function explainConfig(c: StrategyConfig): string[] {
   const direction = plan.mode === "long_short" ? "long and short" : plan.mode === "long_only" ? "long-only" : "spot buy and exit";
 
   lines.push(`This script is designed for ${styleLabels[c.style]} and produces ${direction} signals when used on a ${plan.chartTimeframe} chart.`);
+  // How often it actually fires, stated up front rather than discovered from a quiet chart.
+  // A reader who expects a signal today and gets one a fortnight from now concludes the
+  // indicator is broken, and they are not wrong to — nothing told them otherwise.
+  if (c.tradesPerMonth !== undefined) {
+    lines.push(c.tradesPerMonth < 4
+      ? `Expect roughly ${c.tradesPerMonth} signals per symbol per month. This is a sparse preset: quiet stretches of a week or more are normal and are not a fault.`
+      : `Expect roughly ${c.tradesPerMonth} signals per symbol per month.`);
+  }
   lines.push(c.execution.enforceChartTimeframe
     ? `Signals are blocked when the TradingView chart is not set to ${plan.chartTimeframe}; the dashboard reports OK or WRONG.`
     : `The dashboard reports whether the chart matches ${plan.chartTimeframe}, but mismatched charts are not blocked.`);

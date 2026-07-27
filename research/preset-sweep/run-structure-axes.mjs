@@ -123,7 +123,18 @@ const AXES = [
   ]]] : []),
   ["stop onayi", [[base.risk.stopTrigger === "close" ? "stop wick" : "stop kapanis",
     variant({ risk: { stopTrigger: base.risk.stopTrigger === "close" ? "wick" : "close" } })]]],
-  ...(base.higherTimeframe.enabled
+  // The pivot lookback behind the swing-structure gate: how many bars either side of a high or
+  // low have to be lower or higher before it counts as a pivot. It decides how quickly the bias
+  // turns, which for a structure-gated preset is the same kind of defining number that the
+  // channel length is for a breakout — and it has never been measured, on any preset.
+  ...(base.biasSource === "swing_structure"
+    ? [["swing pivot lookback", [2, 3, 5, 8].filter((v) => v !== base.swingLookback)
+        .map((v) => [`pivot ${v}`, variant({ swingLookback: v })])]]
+    : []),
+  // Structure replaces the higher-timeframe gate rather than joining it, so on a
+  // structure-gated preset the higher-timeframe settings are inert. Measuring them would
+  // produce a table of identical rows.
+  ...(base.higherTimeframe.enabled && base.biasSource !== "swing_structure"
     ? [["ust zaman dilimi", [
         ["htf uzunluk 50", variant({ higherTimeframe: { length: 50 } })],
         ["htf uzunluk 200", variant({ higherTimeframe: { length: 200 } })],
@@ -149,6 +160,20 @@ const AXES = [
     ? [["ADX esigi", [15, 20, 25, 30].filter((v) => v !== base.momentum.adxThreshold)
         .map((v) => [`adx ${v}`, variant({ momentum: { adxThreshold: v } })])]]
     : []),
+  // Which filters are earning their keep. Every preset stacks several directional gates that
+  // answer the same question — is the trend up — and correlated gates mostly duplicate each
+  // other's information while each one still gets a veto. A filter whose removal costs nothing
+  // was buying nothing; one whose removal multiplies the trade count without hurting expectancy
+  // was the binding constraint. Never measured on any preset before.
+  ["filtre kaldirma", [
+    ...(base.trend.emaEnabled ? [["ema trendi KAPALI", variant({ trend: { emaEnabled: false } })]] : []),
+    ...(base.trend.longMaEnabled ? [["uzun MA KAPALI", variant({ trend: { longMaEnabled: false } })]] : []),
+    ...(base.momentum.adxEnabled ? [["ADX KAPALI", variant({ momentum: { adxEnabled: false } })]] : []),
+    ...(base.momentum.macdEnabled ? [["MACD KAPALI", variant({ momentum: { macdEnabled: false } })]] : []),
+    ...(base.momentum.rsiEnabled ? [["RSI KAPALI", variant({ momentum: { rsiEnabled: false } })]] : []),
+    ...(base.volume.enabled ? [["hacim KAPALI", variant({ volume: { enabled: false } })]] : []),
+    ...(base.trend.vwapEnabled ? [["VWAP filtresi KAPALI", variant({ trend: { vwapEnabled: false } })]] : [])
+  ]],
   ["hacim carpani", [0.8, 1, 1.25, 1.5, 2].filter((v) => v !== base.volume.multiplier)
     .map((v) => [`hacim ${v}`, variant({ volume: { multiplier: v } })])],
   ["ATR carpani", [1.5, 2, 2.5, 3].filter((v) => v !== base.risk.atrMultiple)
@@ -193,6 +218,22 @@ const combosFor = (presetId) => ({
     ["seans yok + chart 30dk", variant({ execution: { sessionEnabled: false }, chartTimeframe: "30" })],
     ["seans yok + hacim1.25 + atr2.5", variant({
       execution: { sessionEnabled: false }, volume: { multiplier: 1.25 }, risk: { atrMultiple: 2.5 }
+    })]
+  ],
+  // Pivot 5 was the only isolated axis that both raised the trade count and left more than two
+  // symbols with a sample worth reading, so every pairing starts from it. The rest of the
+  // combinations attack the trade count directly, because on this preset the sample size is the
+  // problem: 57 trades on the holdout across four symbols is ten to seventeen each.
+  swing_trend_4h: [
+    ["pivot 5", variant({ swingLookback: 5 })],
+    ["pivot 5 + atr 2", variant({ swingLookback: 5, risk: { atrMultiple: 2 } })],
+    ["pivot 5 + kapanis stop", variant({ swingLookback: 5, risk: { stopTrigger: "close" } })],
+    ["pivot 5 + uzun MA kapali", variant({ swingLookback: 5, trend: { longMaEnabled: false } })],
+    ["pivot 5 + ema trendi kapali", variant({ swingLookback: 5, trend: { emaEnabled: false } })],
+    ["pivot 5 + ema 20/50", variant({ swingLookback: 5, trend: { emaFast: 20, emaSlow: 50 } })],
+    ["pivot 5 + adx 15", variant({ swingLookback: 5, momentum: { adxThreshold: 15 } })],
+    ["pivot 5 + uzunMA kapali + ema 20/50", variant({
+      swingLookback: 5, trend: { longMaEnabled: false, emaFast: 20, emaSlow: 50 }
     })]
   ]
 }[presetId] ?? []);

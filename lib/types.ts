@@ -77,6 +77,12 @@ export interface StrategyConfig {
   // itself. Measured per preset; only adopted where all three partitions agreed.
   biasSource: BiasSource;
   swingLookback: number;
+  // Measured trades per symbol per month on the win-rate profile, the one a script opens with.
+  // Set only where a review measured it, because a stale frequency is worse than none: a reader
+  // who is told to expect twenty signals and gets two has been misled by the product rather than
+  // by the market. Sparseness is the first thing a reader needs to know and the last thing they
+  // find out if it is left to be discovered from an empty chart.
+  tradesPerMonth?: number;
   trend: {
     emaEnabled: boolean;
     emaFast: number;

@@ -69,7 +69,15 @@ export function compilePine(config: StrategyConfig): string {
       ? `longSetup ? (${longBarColor}) : shortSetup ? (${shortBarColor}) : na`
       : `longSetup ? (${longBarColor}) : na`;
 
-  const ribbonExpression = config.higherTimeframe.enabled
+  // The ribbon colours the chart by which side is allowed, so it has to read the gate that
+  // actually decides that. A structure-gated preset was painting the background from a
+  // higher-timeframe average its signals never consult, which put a red background behind long
+  // signals with nothing to explain it — the dashboard's Structure row said BULL while the chart
+  // said the opposite. structureBull is declared before this section, since the structure block
+  // is inserted ahead of the filters.
+  const ribbonExpression = config.biasSource === "swing_structure"
+    ? "showTrendRibbon and visualProfile != \"Clean\" ? (structureBull ? color.new(color.lime, 95) : structureBear ? color.new(color.red, 95) : na) : na"
+    : config.higherTimeframe.enabled
     ? "showTrendRibbon and visualProfile != \"Clean\" ? (htfBull ? color.new(color.lime, 95) : color.new(color.red, 95)) : na"
     : isSpot
       ? "showTrendRibbon and visualProfile != \"Clean\" ? (buySetup ? color.new(color.lime, 95) : na) : na"

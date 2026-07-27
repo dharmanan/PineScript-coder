@@ -176,5 +176,34 @@ describe("swing structure bias", () => {
       expect(long).toContain("structureBull");
       expect(long).not.toContain("htfBull");
     });
+
+    // The chart was painted from a gate the signals never consulted: the ribbon read a daily
+    // EMA-200 while entries were decided by swing structure, so a long signal could sit on a red
+    // background with nothing to explain the contradiction — and the dashboard's Structure row
+    // said BULL at the same time. Whatever colours the chart has to be what decides the side.
+    it("paints the ribbon from the gate that actually decides the side", () => {
+      const code = indicator(preset);
+      const ribbon = code.split("\n").find((row) => row.includes('title="Trend ribbon"'));
+      expect(ribbon).toBeDefined();
+      expect(ribbon).toContain("structureBull");
+      expect(ribbon).not.toContain("htfBull");
+    });
+
+    // A higher-timeframe gate is inert while the bias comes from structure, so the preset stops
+    // compiling its input and its request.security call. Nothing for a user to switch back on,
+    // unlike the session filter on VWAP Reclaim, which is why that one was kept and this is not.
+    it("stops compiling a higher-timeframe control that decides nothing", () => {
+      expect(preset.higherTimeframe.enabled).toBe(false);
+      const code = indicator(preset);
+      expect(code).not.toContain('input.timeframe("D", "Higher timeframe")');
+      expect(code).not.toContain("htfBull");
+    });
+
+    // The name said 4H. The chart is 30 minutes and the bias comes from pivots on that same
+    // chart, so nothing in this preset was ever four hours.
+    it("is named after what gates it rather than a timeframe it never used", () => {
+      expect(preset.name).toBe("Swing Structure Trend");
+      expect(preset.chartTimeframe).toBe("30");
+    });
   });
 });

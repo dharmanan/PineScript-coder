@@ -7,7 +7,7 @@ const rsiPanePresetNames = [
   "Balanced Intraday",
   "Fast EMA Scalper",
   "VWAP Reclaim",
-  "4H Swing Trend",
+  "Swing Structure Trend",
   "Spot Accumulation",
   "Breakout Momentum",
   "RSI Divergence Reversal",
@@ -16,7 +16,7 @@ const rsiPanePresetNames = [
 ] as const;
 
 const hiddenEnabledPresetNames = [
-  "4H Swing Trend",
+  "Swing Structure Trend",
   "Selective Multi-Timeframe",
   "Long-Term Trend Guard"
 ] as const;
